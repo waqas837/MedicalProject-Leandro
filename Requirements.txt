@@ -1,0 +1,58 @@
+
+
+What we need to collect:
+---------------------------------------------------------------------------------
+Name
+DOB
+Current Address:
+Address registered with FMP: (Usually an US Address)
+
+----------------------------------------------------------------------------------
+Patient's ID:(Extract Name, DOB, Sex)
+Patient's SS: (use security screen to hide social while typing) 
+Patient Selfie:
+Patient Signature:
+Patient's email:
+Patients's Cell Phone:
+Patient's Disability Letter from FMP:
+
+-----------------------------------------------------------------------------------
+Vitals: (Weight, height)
+
+-----------------------------------------------------------------------------------
+Emergency Contact: (Name and Phone)
+
+------------------------------------------------------------------------------------
+Are you a Veteran?
+if Yes ----Branch of service:
+-----------------------------------------------------------------------------------
+Overall Pain --- 1 to 9
+-----------------------------------------------------------------------------------
+Please enter any food or drug allergies
+-----------------------------------------------------------------------------------
+Please enter any current medications:
+-----------------------------------------------------------------------------------
+
+
+This are the two APi links
+You need to send theq country code for each link, we will reply with:
+1- Facilities locations: (city)
+2- Facilities Name
+3- logo
+
+
+purple.orkachart.com
+country=CO
+
+holistic.orkachart.com
+country=DR
+
+
+The branches, are these ones:
+
+Army
+Marine Corps
+Navy
+Air Force
+Space Force
+Coast Guard
