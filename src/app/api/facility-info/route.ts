@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-const API_KEY = '9a4f2d1b-3c6e-4a7b-8f2d-0e1c2b3a4d5f';
-const BASE_URL = 'https://api.orkachart.com/v1/leads';
+const API_KEY = process.env.ORKACHART_API_KEY;
+const BASE_URL = process.env.ORKACHART_BASE_URL || 'https://api.orkachart.com/v1/leads';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,6 +12,14 @@ export async function GET(request: Request) {
       status: 'error',
       message: 'Facility ID is required'
     }, { status: 400 });
+  }
+
+  if (!API_KEY) {
+    console.error('ORKACHART_API_KEY is not configured');
+    return NextResponse.json({
+      status: 'error',
+      message: 'API configuration error'
+    }, { status: 500 });
   }
 
   try {
