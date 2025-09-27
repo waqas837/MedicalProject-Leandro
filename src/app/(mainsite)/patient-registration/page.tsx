@@ -26,9 +26,19 @@ import {
   X
 } from 'lucide-react';
 
+// Define the facility type
+interface Facility {
+  id: number;
+  name: string;
+  city: string;
+  country: string;
+  country_iso: string;
+  logo: string;
+}
+
 const PatientRegistration = () => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [facilities, setFacilities] = useState([]);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(false);
   const [validatedFields, setValidatedFields] = useState<Set<string>>(new Set());
   const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
@@ -390,7 +400,7 @@ const PatientRegistration = () => {
                   required
                 >
                   <option value="">Select Facility</option>
-                  {facilities.map((facility: any) => (
+                  {facilities.map((facility) => (
                     <option key={facility.id} value={facility.name}>
                       {facility.name} - {facility.city}
                     </option>
