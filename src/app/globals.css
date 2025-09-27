@@ -165,3 +165,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     left: 100%;
   }
 }
+
+/* Progressive checkmark animation */
+@keyframes drawCheck {
+  0% {
+    stroke-dashoffset: 20;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Shake animation for invalid fields */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}

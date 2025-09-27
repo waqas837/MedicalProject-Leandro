@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   User, 
   Calendar, 
@@ -20,12 +20,25 @@ import {
   ArrowRight,
   ArrowLeft,
   Upload,
-  Signature
+  Signature,
+  Building2,
+  Check,
+  X
 } from 'lucide-react';
 
 const PatientRegistration = () => {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [facilities, setFacilities] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [validatedFields, setValidatedFields] = useState<Set<string>>(new Set());
+  const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
+  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
+  const [shakingFields, setShakingFields] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
+    // Facility Selection
+    country: '',
+    facility: '',
+    
     // Personal Information
     firstName: '',
     lastName: '',
@@ -61,81 +74,395 @@ const PatientRegistration = () => {
   });
 
   const steps = [
-    { id: 1, title: 'Personal Info', icon: User },
-    { id: 2, title: 'Identity', icon: Shield },
-    { id: 3, title: 'Contact', icon: Phone },
-    { id: 4, title: 'Medical', icon: Heart },
-    { id: 5, title: 'Veteran', icon: Star },
-    { id: 6, title: 'Documents', icon: FileText }
+    { id: 0, title: 'Country', icon: MapPin },
+    { id: 1, title: 'Facility', icon: Building2 },
+    { id: 2, title: 'Personal Info', icon: User },
+    { id: 3, title: 'Identity', icon: Shield },
+    { id: 4, title: 'Contact', icon: Phone },
+    { id: 5, title: 'Medical', icon: Heart },
+    { id: 6, title: 'Veteran', icon: Star },
+    { id: 7, title: 'Documents', icon: FileText }
   ];
 
   const branches = ["Army", "Marine Corps", "Navy", "Air Force", "Space Force", "Coast Guard"];
 
+  // Validation functions
+  const validateField = (field: string, value: any) => {
+    switch (field) {
+      case 'firstName':
+      case 'lastName':
+        return value && value.length >= 2;
+      case 'email':
+        return value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      case 'cellPhone':
+        return value && /^\+?[\d\s\-\(\)]{10,}$/.test(value);
+      case 'ssn':
+        return value && /^\d{3}-\d{2}-\d{4}$/.test(value);
+      case 'weight':
+      case 'height':
+        return value && !isNaN(value) && parseFloat(value) > 0;
+      case 'painLevel':
+        return value && parseInt(value) >= 1 && parseInt(value) <= 9;
+      case 'dateOfBirth':
+        return value && new Date(value) < new Date();
+      case 'currentAddress':
+      case 'fmpAddress':
+        return value && value.length >= 10;
+      case 'patientId':
+        return value && value.length >= 3;
+      case 'emergencyContactName':
+      case 'emergencyContactPhone':
+        return value && value.length >= 2;
+      case 'country':
+      case 'facility':
+        return value && value.length > 0;
+      default:
+        return value && value.length > 0;
+    }
+  };
+
+  // Don't load facilities on mount - wait for country selection
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear invalid field when user starts typing
+    if (invalidFields.has(field)) {
+      setInvalidFields(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(field);
+        return newSet;
+      });
+    }
+    
+    // Only add to validated fields if it becomes valid and wasn't validated before
+    if (validateField(field, value) && !validatedFields.has(field)) {
+      setValidatedFields(prev => new Set(prev).add(field));
+      setAnimatingFields(prev => new Set(prev).add(field));
+      
+      // Remove from animating after animation completes
+      setTimeout(() => {
+        setAnimatingFields(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(field);
+          return newSet;
+        });
+      }, 800);
+    }
+  };
+
+  // Progressive Checkmark Component
+  const AnimatedCheckmark = ({ fieldName }: { fieldName: string }) => {
+    const isValid = validateField(fieldName, formData[fieldName as keyof typeof formData]);
+    const hasBeenValidated = validatedFields.has(fieldName);
+    const isAnimating = animatingFields.has(fieldName);
+    const isInvalid = invalidFields.has(fieldName);
+    const isShaking = shakingFields.has(fieldName);
+    
+    // Show red cross if invalid
+    if (isInvalid) {
+      return (
+        <div className="inline-flex items-center ml-2">
+          <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+            <X className="w-3 h-3 text-white" />
+          </div>
+        </div>
+      );
+    }
+    
+    // Show green checkmark if valid
+    if (!isValid || !hasBeenValidated) return null;
+    
+    return (
+      <div className="inline-flex items-center ml-2">
+        <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+          <svg 
+            className="w-3 h-3 text-white" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="4" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{
+              strokeDasharray: '20',
+              strokeDashoffset: isAnimating ? '20' : '0',
+              animation: isAnimating ? 'drawCheck 0.8s ease-in-out forwards' : 'none'
+            }}
+          >
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  const fetchFacilitiesByCountry = async (countryCode: string) => {
+    setLoading(true);
+    try {
+      // Call our server-side API route with country parameter
+      const response = await fetch(`/api/facilities?country=${countryCode}`);
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setFacilities(data.data);
+      } else {
+        throw new Error('Failed to fetch facilities');
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      // Mock data for development
+      const mockFacilities = countryCode === 'CO' 
+        ? [
+            { id: 4, name: 'Bogotá Medical Center', city: 'Bogotá', country: 'Colombia', country_iso: 'CO', logo: '' },
+            { id: 5, name: 'Medellín Healthcare', city: 'Medellín', country: 'Colombia', country_iso: 'CO', logo: '' }
+          ]
+        : [
+            { id: 1, name: 'Puerto Plata Medical', city: 'Puerto Plata', country: 'Dominican Republic', country_iso: 'DO', logo: '' },
+            { id: 2, name: 'Sosua Health Center', city: 'Sosua', country: 'Dominican Republic', country_iso: 'DO', logo: '' },
+            { id: 3, name: 'Bavaro Clinic', city: 'Bavaro', country: 'Dominican Republic', country_iso: 'DO', logo: '' }
+          ];
+      setFacilities(mockFacilities);
+    }
+    setLoading(false);
   };
 
   const nextStep = () => {
-    if (currentStep < steps.length) {
+    // Validate current step fields
+    const currentStepFields = getCurrentStepFields();
+    const invalidFieldsInStep = currentStepFields.filter(field => !validateField(field, formData[field as keyof typeof formData]));
+    
+    if (invalidFieldsInStep.length > 0) {
+      // Show red crosses for invalid fields
+      setInvalidFields(new Set(invalidFieldsInStep));
+      
+      // Shake animation for invalid fields
+      setShakingFields(new Set(invalidFieldsInStep));
+      setTimeout(() => {
+        setShakingFields(new Set());
+      }, 500);
+      
+      // Auto-scroll to first invalid field on mobile
+      setTimeout(() => {
+        const firstInvalidField = document.querySelector(`input[name="${invalidFieldsInStep[0]}"]`) || 
+                                 document.querySelector(`select[name="${invalidFieldsInStep[0]}"]`) ||
+                                 document.querySelector(`textarea[name="${invalidFieldsInStep[0]}"]`);
+        
+        if (firstInvalidField) {
+          firstInvalidField.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          });
+          // Focus the field for better mobile UX
+          (firstInvalidField as HTMLElement).focus();
+        }
+      }, 100);
+      
+      return; // Don't proceed to next step
+    }
+    
+    // Clear invalid fields if all are valid
+    setInvalidFields(new Set());
+    
+    if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
+      
+      // Scroll to form after step change
+      setTimeout(() => {
+        const formElement = document.querySelector('.bg-white\\/80');
+        if (formElement) {
+          formElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
+    }
+  };
+
+  const getCurrentStepFields = () => {
+    switch (currentStep) {
+      case 0: return ['country'];
+      case 1: return ['facility'];
+      case 2: return ['firstName', 'lastName', 'dateOfBirth', 'currentAddress', 'fmpAddress'];
+      case 3: return ['patientId', 'ssn'];
+      case 4: return ['email', 'cellPhone', 'emergencyContactName', 'emergencyContactPhone'];
+      case 5: return ['weight', 'height', 'painLevel'];
+      case 6: return ['isVeteran'];
+      case 7: return ['disabilityLetter'];
+      default: return [];
     }
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    // Handle form submission here
+    
+    try {
+      // Submit to our server-side API
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        console.log('Registration successful:', result);
+        alert('Registration submitted successfully!');
+      } else {
+        console.error('Registration failed:', result);
+        alert('Registration failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Error submitting form. Please try again.');
+    }
+    
+    // Also output JSON for backend developer
+    console.log('Form data:', formData);
+    console.log('JSON for backend:', JSON.stringify(formData, null, 2));
   };
 
   const renderStepContent = () => {
     switch (currentStep) {
+      case 0:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Select Your Country</h3>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                Country *
+                <AnimatedCheckmark fieldName="country" />
+              </label>
+                <select
+                  name="country"
+                  value={formData.country}
+                  onChange={(e) => {
+                    handleInputChange('country', e.target.value);
+                    if (e.target.value) {
+                      fetchFacilitiesByCountry(e.target.value);
+                    }
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  required
+                >
+                <option value="">Select Country</option>
+                <option value="CO">Colombia 🇨🇴</option>
+                <option value="DO">Dominican Republic 🇩🇴</option>
+              </select>
+            </div>
+          </div>
+        );
+
       case 1:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Select Your Facility</h3>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                Facility *
+                <AnimatedCheckmark fieldName="facility" />
+              </label>
+              {loading ? (
+                <div className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
+                  <span className="ml-2">Loading facilities...</span>
+                </div>
+              ) : (
+                <select
+                  name="facility"
+                  value={formData.facility}
+                  onChange={(e) => handleInputChange('facility', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  required
+                >
+                  <option value="">Select Facility</option>
+                  {facilities.map((facility: any) => (
+                    <option key={facility.id} value={facility.name}>
+                      {facility.name} - {facility.city}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+        );
+
+      case 2:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Personal Information</h3>
             
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  First Name *
+                  <AnimatedCheckmark fieldName="firstName" />
+                </label>
                 <input
                   type="text"
+                  name="firstName"
                   value={formData.firstName}
                   onChange={(e) => handleInputChange('firstName', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                    shakingFields.has('firstName') ? 'shake border-red-500' : ''
+                  }`}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  Last Name *
+                  <AnimatedCheckmark fieldName="lastName" />
+                </label>
                 <input
                   type="text"
+                  name="lastName"
                   value={formData.lastName}
                   onChange={(e) => handleInputChange('lastName', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                    shakingFields.has('lastName') ? 'shake border-red-500' : ''
+                  }`}
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                Date of Birth *
+                <AnimatedCheckmark fieldName="dateOfBirth" />
+              </label>
               <input
                 type="date"
+                name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                  shakingFields.has('dateOfBirth') ? 'shake border-red-500' : ''
+                }`}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Current Address *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                Current Address *
+                <AnimatedCheckmark fieldName="currentAddress" />
+              </label>
               <textarea
                 value={formData.currentAddress}
                 onChange={(e) => handleInputChange('currentAddress', e.target.value)}
@@ -146,7 +473,10 @@ const PatientRegistration = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Address Registered with FMP *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                Address Registered with FMP *
+                <AnimatedCheckmark fieldName="fmpAddress" />
+              </label>
               <textarea
                 value={formData.fmpAddress}
                 onChange={(e) => handleInputChange('fmpAddress', e.target.value)}
@@ -235,7 +565,9 @@ const PatientRegistration = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                    shakingFields.has('email') ? 'shake border-red-500' : ''
+                  }`}
                   required
                 />
               </div>
@@ -245,7 +577,9 @@ const PatientRegistration = () => {
                   type="tel"
                   value={formData.cellPhone}
                   onChange={(e) => handleInputChange('cellPhone', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                    shakingFields.has('cellPhone') ? 'shake border-red-500' : ''
+                  }`}
                   required
                 />
               </div>
@@ -450,18 +784,15 @@ const PatientRegistration = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-100 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-100 py-4 sm:py-12">
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-6 sm:mb-12">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               Patient Registration
             </span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Complete your registration to access our premium healthcare services
-          </p>
         </div>
 
         {/* Progress Steps */}
@@ -510,19 +841,19 @@ const PatientRegistration = () => {
         </div>
 
         {/* Form */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/50 p-8">
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/50 p-4 sm:p-8">
           <form onSubmit={handleSubmit}>
             {renderStepContent()}
             
             {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
               <button
                 type="button"
                 onClick={prevStep}
-                disabled={currentStep === 1}
-                className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-                  currentStep === 1
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                disabled={currentStep === 0}
+                className={`flex items-center justify-center space-x-2 px-4 sm:px-6 py-3 rounded-lg font-semibold transition-all duration-300 w-full sm:w-auto ${
+                  currentStep === 0 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
@@ -530,11 +861,11 @@ const PatientRegistration = () => {
                 <span>Previous</span>
               </button>
               
-              {currentStep < steps.length ? (
+              {currentStep < steps.length - 1 ? (
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="flex items-center space-x-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  className="flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 sm:px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto"
                 >
                   <span>Next</span>
                   <ArrowRight className="h-5 w-5" />
@@ -542,7 +873,7 @@ const PatientRegistration = () => {
               ) : (
                 <button
                   type="submit"
-                  className="flex items-center space-x-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  className="flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 sm:px-8 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto"
                 >
                   <span>Submit Registration</span>
                   <CheckCircle className="h-5 w-5" />

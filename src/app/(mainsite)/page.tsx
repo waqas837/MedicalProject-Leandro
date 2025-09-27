@@ -1,9 +1,9 @@
-import MainHero from '@/components/HeroSection/MainHero'
+import PatientRegistration from './patient-registration/page'
 
 const Home = () => {
   return (
     <>
-      <MainHero />
+      <PatientRegistration />
     </>
   )
 }

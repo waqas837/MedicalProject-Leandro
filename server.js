@@ -3,7 +3,7 @@ const { parse } = require("url");
 const next = require("next");
 
  
-const port = parseInt(process.env.PORT || "3002", 10);
+const port = parseInt(process.env.PORT || "3005", 10);
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();

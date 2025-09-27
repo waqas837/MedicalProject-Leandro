@@ -1,0 +1,308 @@
+{
+	"info": {
+		"_postman_id": "38d5d9bd-06f2-431c-ad5b-4106969c52d8",
+		"name": "Orkachart API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "16776883",
+		"_collection_link": "https://ipexsystem.postman.co/workspace/iPex-Systems~5536d84c-b83d-4c6b-9f4a-8d946bbc327a/collection/16776883-38d5d9bd-06f2-431c-ad5b-4106969c52d8?action=share&source=collection_link&creator=16776883"
+	},
+	"item": [
+		{
+			"name": "list-facilities",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status code is 200 for country code 'DO'\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response contains facilities specific to the Dominican Republic when country code is 'DO'\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData).to.have.property('status');\r",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');\r",
+							"\r",
+							"    responseData.data.forEach(facility => {\r",
+							"        pm.expect(facility).to.have.property('id_md_company');\r",
+							"        pm.expect(facility).to.have.property('facility_name').that.is.a('string').and.is.not.empty;\r",
+							"        pm.expect(facility).to.have.property('country_iso').that.equals('DO');\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response status code is 200 for country code 'CO'\", function () {\r",
+							"    pm.expect(pm.response.code).to.eql(200);\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response contains facilities specific to Colombia when country code is 'CO'\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData).to.have.property('status');\r",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');\r",
+							"\r",
+							"    responseData.data.forEach(function(facility) {\r",
+							"        pm.expect(facility).to.be.an('object');\r",
+							"        pm.expect(facility).to.have.property('id_md_company').that.is.a('string');\r",
+							"        pm.expect(facility).to.have.property('facility_name').that.is.a('string');\r",
+							"        pm.expect(facility).to.have.property('country_iso').that.equals('CO');\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response status code is 200 when no country code is provided\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "9a4f2d1b-3c6e-4a7b-8f2d-0e1c2b3a4d5f",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.orkachart.com/v1/leads/list-facilities/CO",
+					"protocol": "https",
+					"host": [
+						"api",
+						"orkachart",
+						"com"
+					],
+					"path": [
+						"v1",
+						"leads",
+						"list-facilities",
+						"CO"
+					]
+				},
+				"description": "# API Endpoint: List Facilities by Country Code\n\nThis endpoint retrieves a list of facilities based on the specified country code. If no country code is provided, it will return all available facilities.\n\n## Purpose\n\nThe primary purpose of this request is to obtain information about facilities filtered by a specific country code. For example, using 'DO' will return facilities in the Dominican Republic, while 'CO' will return those in Colombia.\n\n## Input Parameters\n\n- **country_code** (optional): A string representing the country code to filter the facilities.\n    \n    - Example:\n        \n        - 'DO' for Dominican Republic\n            \n        - 'CO' for Colombia\n            \n\n## Expected Response Structure\n\nOn a successful request (HTTP status 200), the response will be in JSON format and will include:\n\n- **status**: A string indicating the status of the request.\n    \n- **data**: An array of facility objects, where each object contains:\n    \n    - **id_facility**: A unique identifier for the company (string).\n        \n    - **facility_name**: The name of the facility (string).\n        \n    - **city**: City where facility is located (string).\n        \n    - **country_iso**: The ISO code of the country (string).\n        \n\n### Example Response\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": [\n    {\n      \"id_facility\": \"\",\n      \"facility_name\": \"\",\n      \"city\": \"\",\n      \"country_iso\": \"\"\n    }\n  ]\n}\n\n ```\n\nThis structure allows consumers of the API to easily access and utilize the relevant details about each facility, such as its name and location.\n\nThis endpoint retrieves a list of facilities associated with a specific company, identified by the provided company code. It is useful for applications that need to display or manage facilities linked to a particular organization.\n\n## Request\n\n**Method:** GET  \n**URL:** `https://api.orkachart.com/v1/leads/list-facilities/{company_code}`\n\n### Path Parameters\n\n- **company_code** (string): The unique identifier for the company whose facilities are being requested. Replace `{company_code}` with the actual code when making the request.\n    \n\n## Response\n\nOn a successful request, the API will return a JSON object with the following structure:\n\n### Response Structure\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": [\n    {\n      \"id_facility\": \"\",\n      \"facility_name\": \"\",\n      \"city\": \"\",\n      \"country_iso\": \"\"\n    }\n  ]\n}\n\n ```\n\n### Response Fields\n\n- **status** (string): Indicates the status of the request. Typically, this will be an empty string if the request was successful.\n    \n- **data** (array): An array of facility objects, each containing:\n    \n    - **id_md_company** (string): The unique identifier for the company.\n        \n    - **facility_name** (string): The name of the facility.\n        \n    - **country_iso** (string): The ISO code representing the country where the facility is located.\n        \n\n### Example Response\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": [\n    {\n      \"id_faciity\": \"3\",\n      \"facility_name\": \"Main Office\",\n      \"city\": \"Medellin\",\n      \"country_iso\": \"CO\"\n    }\n  ]\n}\n\n ```\n\n## Usage Notes\n\n- Ensure that the correct company code is provided in the request path to receive the relevant facilities.\n    \n- The response will include all facilities associated with the specified company, allowing users to manage or display this information as needed.\n    \n- The structure of the response is consistent with other endpoints in the API, facilitating easier integration and handling of data across different API calls."
+			},
+			"response": []
+		},
+		{
+			"name": "list-insurances",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status code is 200 for country code 'DO'\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response contains facilities specific to the Dominican Republic when country code is 'DO'\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData).to.have.property('status');\r",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');\r",
+							"\r",
+							"    responseData.data.forEach(facility => {\r",
+							"        pm.expect(facility).to.have.property('id_md_company');\r",
+							"        pm.expect(facility).to.have.property('facility_name').that.is.a('string').and.is.not.empty;\r",
+							"        pm.expect(facility).to.have.property('country_iso').that.equals('DO');\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response status code is 200 for country code 'CO'\", function () {\r",
+							"    pm.expect(pm.response.code).to.eql(200);\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response contains facilities specific to Colombia when country code is 'CO'\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData).to.have.property('status');\r",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');\r",
+							"\r",
+							"    responseData.data.forEach(function(facility) {\r",
+							"        pm.expect(facility).to.be.an('object');\r",
+							"        pm.expect(facility).to.have.property('id_md_company').that.is.a('string');\r",
+							"        pm.expect(facility).to.have.property('facility_name').that.is.a('string');\r",
+							"        pm.expect(facility).to.have.property('country_iso').that.equals('CO');\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response status code is 200 when no country code is provided\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "9a4f2d1b-3c6e-4a7b-8f2d-0e1c2b3a4d5f",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.orkachart.com/v1/leads/list-insurances/CO",
+					"protocol": "https",
+					"host": [
+						"api",
+						"orkachart",
+						"com"
+					],
+					"path": [
+						"v1",
+						"leads",
+						"list-insurances",
+						"CO"
+					]
+				},
+				"description": "# API Endpoint: List Insurance Companies by Country Code\n\nThis endpoint retrieves a list of insurance companies based on the specified country code. If no country code is provided, it will return all available insurance companies.\n\n## Purpose\n\nThe primary purpose of this request is to obtain information about insurance companies filtered by a specific country code. For example, using 'DO' will return insurance companies in the Dominican Republic, while 'CO' will return those in Colombia.\n\n## Input Parameters\n\n- **country_code** (string): A string representing the country code to filter the insurance companies.\n    \n    - Example:\n        \n        - 'DO' for Dominican Republic\n            \n        - 'CO' for Colombia\n            \n\n## Expected Response Structure\n\nOn a successful request (HTTP status 200), the response will be in JSON format and will include:\n\n- **status**: A string indicating the status of the request.\n    \n- **data**: An array of insurance company objects, where each object contains:\n    \n    - **id_insurance_company_country**: A unique identifier for the insurance company (string).\n        \n    - **code**: The code associated with the insurance company (string).\n        \n    - **company**: The name of the insurance company (string).\n        \n    - **country_iso**: The ISO code of the country (string).\n        \n\n### Example Response\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": [\n    {\n      \"id_insurance_company_country\": \"\",\n      \"code\": \"\",\n      \"company\": \"\",\n      \"country_iso\": \"\"\n    }\n  ]\n}\n\n ```\n\nThis structure allows consumers of the API to easily access and utilize the relevant details about each insurance company, such as its name and location.\n\n## Request\n\n**Method:** GET  \n**URL:** `https://api.orkachart.com/v1/leads/list-insurances/{country_code}`\n\n### Path Parameters\n\n- **country_code** (string): The unique identifier for the country whose insurance companies are being requested. Replace `{country_code}` with the actual code when making the request.\n    \n\n## Response\n\nOn a successful request, the API will return a JSON object with the following structure:\n\n### Response Structure\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": [\n    {\n      \"id_insurance_company_country\": \"\",\n      \"code\": \"\",\n      \"company\": \"\",\n      \"country_iso\": \"\"\n    }\n  ]\n}\n\n ```\n\n### Response Fields\n\n- **status** (string): Indicates the status of the request. Typically, this will be an empty string if the request was successful.\n    \n- **data** (array): An array of insurance company objects, each containing:\n    \n    - **id_insurance_company_country** (string): The unique identifier for the insurance company.\n        \n    - **code** (string): The code associated with the insurance company.\n        \n    - **company** (string): The name of the insurance company.\n        \n    - **country_iso** (string): The ISO code representing the country where the insurance company is located.\n        \n\n### Example Response\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": [\n    {\n      \"id_insurance_company_country\": \"\",\n      \"code\": \"XYZ\",\n      \"company\": \"Example Insurance Co.\",\n      \"country_iso\": \"CO\"\n    }\n  ]\n}\n\n ```\n\n## Usage Notes\n\n- Ensure that the correct country code is provided in the request path to receive the relevant insurance companies.\n    \n- The response will include all insurance companies associated with the specified country, allowing users to manage or display this information as needed.\n    \n- The structure of the response is consistent with other endpoints in the API, facilitating easier integration and handling of data across different API calls."
+			},
+			"response": []
+		},
+		{
+			"name": "info-facility",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "9a4f2d1b-3c6e-4a7b-8f2d-0e1c2b3a4d5f",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.orkachart.com/v1/leads/info-facility/2",
+					"protocol": "https",
+					"host": [
+						"api",
+						"orkachart",
+						"com"
+					],
+					"path": [
+						"v1",
+						"leads",
+						"info-facility",
+						"2"
+					]
+				},
+				"description": "## Endpoint Description\n\nThis endpoint fetches facility info by passing the `id_md_company`. It retrieves detailed information about a specific facility associated with the given company ID.\n\n### Request\n\n- **Method**: GET\n    \n- **URL**: `https://api.orkachart.com/v1/leads/info-facility/{`id_facility`}`\n    \n\n### Response\n\nOn a successful request, the API returns a `200` status code along with the following structure:\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": {\n    \"id_facility\": \"\",\n    \"organization\": \"\",\n    \"facility_name\": \"\",\n    \"address\": \"\",\n    \"address2\": \"\",\n    \"city\": \"\",\n    \"country\": \"\",\n    \"phone_number\": \"\",\n    \"fax_number\": \"\",\n    \"country_phone_code\": \"\",\n    \"logo\": \"\",\n    \"consent\": \"\"\n  }\n}\n\n ```\n\n### Response Fields\n\n- **status**: A string indicating the status of the request.\n    \n- **data**: An object containing the facility information:\n    \n    - **id_facility**: The ID of the company.\n        \n    - **organization**: The name of the organization.\n        \n    - **facility_name**: The name of the facility.\n        \n    - **address**: The primary address of the facility.\n        \n    - **address2**: An optional secondary address for the facility.\n        \n    - **city**: The city where the facility is located.\n        \n    - **country**: The country of the facility.\n        \n    - **phone_number**: The contact phone number for the facility.\n        \n    - **fax_number**: The fax number for the facility.\n        \n    - **country_phone_code**: The country phone code.\n        \n    - **logo**: The URL or path to the facility's logo.\n        \n    - **consent**: Information regarding consent (if applicable).\n        \n\nThis endpoint serves as a vital resource for obtaining comprehensive details about a facility based on the company ID provided.\n\nThis endpoint retrieves detailed information about a specific facility associated with a lead in the system.\n\n### HTTP Method\n\n`GET`\n\n### Endpoint\n\n`https://api.orkachart.com/v1/leads/info-facility/{facility_id}`\n\n### Path Parameters\n\n- **facility_id** (required): The unique identifier for the facility you want to retrieve information for. In this example, the facility ID is `2`.\n    \n\n### Expected Response Format\n\nOn successful execution of the request, a `200 OK` status code is returned along with a JSON response containing the following structure:\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": {\n    \"id_facility\": \"\",\n    \"organization\": \"\",\n    \"facility_name\": \"\",\n    \"address\": \"\",\n    \"address2\": \"\",\n    \"city\": \"\",\n    \"country\": \"\",\n    \"phone_number\": \"\",\n    \"fax_number\": \"\",\n    \"country_phone_code\": \"\",\n    \"logo\": \"\",\n    \"consent\": \"\"\n  }\n}\n\n ```\n\n### Response Fields\n\n- **status**: A string indicating the status of the response.\n    \n- **data**: An object containing detailed information about the facility:\n    \n    - **id_facility**: The ID of the associated company.\n        \n    - **organization**: The name of the organization.\n        \n    - **facility_name**: The name of the facility.\n        \n    - **address**: The primary address of the facility.\n        \n    - **address2**: Additional address information, if applicable.\n        \n    - **city**: The city where the facility is located.\n        \n    - **country**: The country of the facility.\n        \n    - **phone_number**: The contact phone number for the facility.\n        \n    - **fax_number**: The fax number for the facility.\n        \n    - **country_phone_code**: The country code for the phone number.\n        \n    - **logo**: A URL or path to the facility's logo.\n        \n    - **consent**: Consent information related to the facility.\n        \n\n### Related Endpoints\n\nThis endpoint is related to others that provide similar data models, which can return lists of facilities or additional details about organizations, ensuring comprehensive access to facility-related information.\n\n### Notes\n\nMake sure to replace `{facility_id}` with the actual ID of the facility you wish to retrieve when making the request."
+			},
+			"response": []
+		},
+		{
+			"name": "country-organization",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "9a4f2d1b-3c6e-4a7b-8f2d-0e1c2b3a4d5f",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.orkachart.com/v1/leads/country-organization/CO",
+					"protocol": "https",
+					"host": [
+						"api",
+						"orkachart",
+						"com"
+					],
+					"path": [
+						"v1",
+						"leads",
+						"country-organization",
+						"CO"
+					]
+				},
+				"description": "## Endpoint Description\n\nThis endpoint fetches the information for a Country Organization to display on the landing page.\n\n### Request\n\n- **Method**: GET\n    \n- **URL**: `https://api.orkachart.com/v1/leads/country-organization/{country_code}`\n    \n\n### Response\n\n- **Status Code**: 200\n    \n- **Content-Type**: application/json\n    \n\nThe response will include the following structure:\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": [\n    {\n      \"organization\": \"\",\n      \"phone_number\": \"\",\n      \"fax_number\": \"\",\n      \"country_phone_code\": \"\",\n      \"logo\": \"\"\n    }\n  ]\n}\n\n ```\n\n### Response Fields\n\n- **status**: A string indicating the status of the request.\n    \n- **data**: An array containing objects with the following fields:\n    \n    - **organization**: The name of the organization.\n        \n    - **phone_number**: The contact phone number of the organization.\n        \n    - **fax_number**: The fax number of the organization.\n        \n    - **country_phone_code**: The phone code for the country.\n        \n    - **logo**: The logo of the organization.\n        \n\nThis endpoint is useful for retrieving essential details about organizations within a specified country, which can be leveraged to enhance user experience on the landing page.\n\nThis endpoint retrieves information related to organizations based on a specified country code. It is part of the OrkaChart API, which provides insights into various organizations and their facilities within different countries.\n\n### Request\n\n- **Method:** GET\n    \n- **URL:** `https://api.orkachart.com/v1/leads/country-organization/{country_code}`\n    \n\n#### Path Parameters\n\n- `country_code` (string): The ISO code of the country for which the organization data is being requested. In this example, the country code is `DO` (Dominican Republic).\n    \n\n### Response\n\nUpon a successful request, the API will return a JSON object with the following structure:\n\n``` json\n{\n  \"status\": \"\",\n  \"data\": [\n    {\n      \"id_md_company\": \"\",\n      \"organization\": \"\",\n      \"facility_name\": \"\",\n      \"address\": \"\",\n      \"address2\": \"\",\n      \"city\": \"\",\n      \"country\": \"\",\n      \"phone_number\": \"\",\n      \"fax_number\": \"\",\n      \"country_phone_code\": \"\",\n      \"logo\": \"\",\n      \"consent\": \"\"\n    }\n  ]\n}\n\n ```\n\n#### Response Fields\n\n- `status` (string): Indicates the status of the request (e.g., success or error).\n    \n- `data` (array): An array of objects containing detailed information about organizations. Each object may include:\n    \n    - `id_md_company` (string): Unique identifier for the company.\n        \n    - `organization` (string): Name of the organization.\n        \n    - `facility_name` (string): Name of the facility associated with the organization.\n        \n    - `address` (string): Primary address of the organization.\n        \n    - `address2` (string): Secondary address (if applicable).\n        \n    - `city` (string): City where the organization is located.\n        \n    - `country` (string): Country where the organization is located.\n        \n    - `phone_number` (string): Contact phone number for the organization.\n        \n    - `fax_number` (string): Fax number for the organization.\n        \n    - `country_phone_code` (string): Country-specific phone code.\n        \n    - `logo` (string): URL or identifier for the organization's logo.\n        \n    - `consent` (string): Information regarding consent, if applicable.\n        \n\n### Status Codes\n\n- **200 OK**: The request was successful, and the data is returned as described above.\n    \n\nThis endpoint is useful for obtaining a comprehensive overview of organizations operating within a specified country, including their contact details and facilities."
+			},
+			"response": []
+		},
+		{
+			"name": "signup",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "9a4f2d1b-3c6e-4a7b-8f2d-0e1c2b3a4d5f",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id_facility\": \"3\",\r\n    \"id_insurance_company_country\": \"1\",\r\n    \"other_insurance_company\": \"\",\r\n    \"no_insurance\": \"true\", //true or false\r\n    \"first_name\": \"John\",\r\n    \"middle_name\": \"\",\r\n    \"last_name\": \"Doe\",\r\n    \"gender\": \"Male\", //Male or Female\r\n    \"address\": \"\",\r\n    \"apt_unit\": \"\",\r\n    \"city\": \"\",\r\n    \"state\": \"\",\r\n    \"zip_code\": \"\",\r\n    \"address_fmp\": \"\",\r\n    \"apt_unit_fmp\": \"\",\r\n    \"city_fmp\": \"\",\r\n    \"state_fmp\": \"\",\r\n    \"zip_code_fmp\": \"\",\r\n    \"phone_number\": \"+1 (800) 111-2233\",\r\n    \"email\": \"test@email.com\",\r\n    \"ssn\": \"111-22-3333\",\r\n    \"dob\": \"1980-05-05\",\r\n    \"photo\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/\",\r\n    \"patient_signature\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXwAAABuCAYAAAAkjqjuAAAFM0lEQVR4AezUYY7aMBAGUNT/\",\r\n    \"va_letter\": \"data:application/pdf;base64,JVBERi0xLjQKJeLjz9MNCjQgMCBvYmoKPDwKL1R5cGUvWE9iamV\",\r\n    \"photo_id\": \"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/\",\r\n    \"ID_name\": \"John\",\r\n    \"ID_last_name\": \"Doe\",\r\n    \"ID_dob\": \"1980-05-05\",\r\n    \"ID_number\": \"R219-253-99-300-0\",    \r\n    \"weight\": \"165\",\r\n    \"height_feet\": \"5\",\r\n    \"height_inches\": \"07\",\r\n    \"food_drug_allergies\":\"fish, penicillin\",\r\n    \"current_medications\": [\"advil\",\"acetaminophen\",\"insuline\",\"hydrochlorothiazide\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api.orkachart.com/v1/leads/signup",
+					"protocol": "https",
+					"host": [
+						"api",
+						"orkachart",
+						"com"
+					],
+					"path": [
+						"v1",
+						"leads",
+						"signup"
+					]
+				},
+				"description": "## Endpoint: Sign Up Lead\n\nThis endpoint allows for the creation of a new patient lead in the system. It accepts a JSON payload containing various personal and medical information about the patient.\n\n### Request\n\n**Method:** POST  \n**URL:** `https://api.orkachart.com/v1/leads/signup`\n\n**Request Body:**\n\nThe request body must be in JSON format with the following parameters:\n\n- `id_facility` (string): The ID of the medical company associated with the patient.\n    \n- `id_insurance_company_country` (string): The ID of the local insurance provider.\n    \n- `first_name` (string): The first name of the patient.\n    \n- `middle_name` (string, optional): The middle name of the patient.\n    \n- `last_name` (string): The last name of the patient.\n    \n- `gender` (string): The gender of the patient.\n    \n- `address` (string, optional): The street address of the patient.\n    \n- `apt_unit` (string, optional): The apartment or unit number.\n    \n- `city` (string, optional): The city of residence.\n    \n- `state` (string, optional): The state of residence.\n    \n- `zip_code` (string, optional): The postal code.\n    \n- `address_fmp` (string, optional): The formatted address.\n    \n- `apt_unit_fmp` (string, optional): The formatted apartment/unit number.\n    \n- `city_fmp` (string, optional): The formatted city.\n    \n- `state_fmp` (string, optional): The formatted state.\n    \n- `zip_code_fmp` (string, optional): The formatted postal code.\n    \n- `phone_number` (string): The contact phone number of the patient.\n    \n- `email` (string): The email address of the patient.\n    \n- `ssn` (string): The social security number of the patient.\n    \n- `dob` (string): The date of birth of the patient in YYYY-MM-DD format.\n    \n- `photo` (string): The base64 encoded image of the patient's photo.\n    \n- `patient_signature` (string): The base64 encoded image of the patient's signature.\n    \n- `va_letter` (string): The base64 encoded document of the VA letter.\n    \n- `photo_id` (string): The base64 encoded image of the patient's ID.\n    \n- `ID_name` (string): The first name on the ID.\n    \n- `ID_last_name` (string): The last name on the ID.\n    \n- `ID_dob` (string): The date of birth on the ID in YYYY-MM-DD format.\n    \n- `ID_number` (string): The ID number.\n    \n- `weight` (string): The weight of the patient.\n    \n- `height_feet` (string): The height of the patient in feet.\n    \n- `height_inches` (string): The height of the patient in inches.\n    \n- `food_drug_allergies` (string): Any known food or drug allergies.\n    \n- `current_medications` (string): Any current medications the patient is taking.\n    \n\n### Response\n\nOn a successful request, the API will return a JSON response with the following structure:\n\n- `status` (string): The status of the request (e.g., \"success\" or \"error\").\n    \n- `message` (string): A message providing additional information about the request status.\n    \n- `record_id` (string): The unique identifier for the newly created patient record.\n    \n\n### Example Response\n\n``` json\n{\n  \"status\": \"success\",\n  \"message\": \"Patient created successfully.\",\n  \"record_id\": \"123456789\"\n}\n\n ```\n\n### Status Codes\n\n- **200 OK**: The request was successful, and the patient was created.\n    \n- **400 Bad Request**: There was an error with the request parameters.\n    \n\nEnsure that all required fields are included in the request to avoid errors.\n\nThis endpoint allows users to sign up a new lead in the system. It accepts various personal and identification details about the lead and processes the information to create a new entry in the database.\n\n### Request Body Format\n\nThe request must be sent as a JSON object with the following parameters:\n\n- **id_md_company** (string): The unique identifier for the company associated with the lead.\n    \n- **first_name** (string): The first name of the lead.\n    \n- **middle_name** (string, optional): The middle name of the lead.\n    \n- **last_name** (string): The last name of the lead.\n    \n- **gender** (string): The gender of the lead.\n    \n- **marital_status** (string): The marital status of the lead.\n    \n- **address** (string, optional): The street address of the lead.\n    \n- **apt_unit** (string, optional): The apartment or unit number.\n    \n- **city** (string, optional): The city where the lead resides.\n    \n- **state** (string, optional): The state where the lead resides.\n    \n- **zip_code** (string, optional): The postal code.\n    \n- **address_usa** (string, optional): The address in the USA.\n    \n- **apt_unit_usa** (string, optional): The apartment or unit number in the USA.\n    \n- **city_usa** (string, optional): The city in the USA.\n    \n- **state_usa** (string, optional): The state in the USA.\n    \n- **zip_code_usa** (string, optional): The postal code in the USA.\n    \n- **phone_number1** (string): The primary phone number of the lead.\n    \n- **email** (string, optional): The email address of the lead.\n    \n- **ssn** (string): The Social Security Number of the lead.\n    \n- **dob** (string): The date of birth of the lead in YYYY-MM-DD format.\n    \n- **photo** (string): A base64 encoded image of the lead's photo.\n    \n- **photo_id** (string): A base64 encoded image of the lead's identification.\n    \n- **id_name** (string): The name on the identification.\n    \n- **id_last_name** (string): The last name on the identification.\n    \n- **id_dob** (string): The date of birth on the identification in YYYY-MM-DD format.\n    \n- **id_number** (string): The identification number.\n    \n- **patient_signature** (string): A base64 encoded image of the lead's signature.\n    \n- **va_letter** (string): A base64 encoded PDF document.\n    \n\n### Response Structure\n\nOn a successful request, the API will return a JSON object with the following structure:\n\n- **status** (string): The status of the request (e.g., success or error).\n    \n- **data** (object or array): Contains relevant data based on the request, which may include:\n    \n    - **id_md_company** (string): The unique identifier for the company.\n        \n    - **organization** (string): The name of the organization.\n        \n    - **facility_name** (string): The name of the facility associated with the lead.\n        \n    - **address** (string): The address of the organization or facility.\n        \n    - **address2** (string, optional): Additional address information.\n        \n    - **city** (string): The city of the organization or facility.\n        \n    - **country** (string): The country of the organization or facility.\n        \n    - **phone_number** (string): The contact number of the organization or facility.\n        \n    - **fax_number** (string): The fax number of the organization or facility.\n        \n    - **country_phone_code** (string): The country code for the phone number.\n        \n    - **logo** (string): The logo of the organization or facility.\n        \n    - **consent** (string, optional): Information regarding consent if applicable.\n        \n\nThe expected response will typically include a 200 status code indicating that the request was successful."
+			},
+			"response": []
+		}
+	]
+}

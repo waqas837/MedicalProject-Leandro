@@ -56,3 +56,13 @@ Navy
 Air Force
 Space Force
 Coast Guard
+
+
+
+
+First step is ti ask; the facility 
+
+For example in Dominican Republic 🇩🇴 we have: Puerto Plata, Sosua and Bavaro
+The patient has to pick which location they are signing up for
+That information you need ti get it from out backend
+By sending the country code
