@@ -1,0 +1,188 @@
+1.
+https://api.orkachart.com/v1/leads/list-facilities 
+{
+    "status": "success",
+    "data": [
+        {
+            "id_facility": "2",
+            "facility_name": "Holistic Care Puerto Plata",
+            "city": "Puerto Plata",
+            "country_iso": "DO"
+        },
+        {
+            "id_facility": "3",
+            "facility_name": "Purple Heart Health",
+            "city": "Medellin",
+            "country_iso": "CO"
+        },
+        {
+            "id_facility": "4",
+            "facility_name": "Holistic Care Sosua",
+            "city": "Sosua",
+            "country_iso": "DO"
+        }
+    ]
+}
+
+
+
+
+
+
+2. 
+https://api.orkachart.com/v1/leads/list-insurances/CO
+{
+    "status": "success",
+    "data": [
+        {
+            "id_insurance_company_country": "1",
+            "code": null,
+            "company": "Sura",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "2",
+            "code": null,
+            "company": "Sanitas",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "3",
+            "code": null,
+            "company": "Nueva EPS",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "4",
+            "code": null,
+            "company": "Salud Total",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "5",
+            "code": null,
+            "company": "Coosalud",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "6",
+            "code": null,
+            "company": "Famisanar",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "7",
+            "code": null,
+            "company": "Compensar",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "8",
+            "code": null,
+            "company": "Comfenalco Valle",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "9",
+            "code": null,
+            "company": "Savia Salud",
+            "country_iso": "CO"
+        },
+        {
+            "id_insurance_company_country": "10",
+            "code": null,
+            "company": "Capital Salud",
+            "country_iso": "CO"
+        }
+    ]
+}
+
+
+3
+https://api.orkachart.com/v1/leads/info-facility/2
+
+{
+    "status": "success",
+    "data": {
+        "id_facility": "2",
+        "organization": "Holistic Care Veterans Center",
+        "facility_name": "Holistic Care Puerto Plata",
+        "address": "Calle H # 21",
+        "address2": "Torre Alta I",
+        "city": "Puerto Plata",
+        "country": "Dominican Republic",
+        "phone_number": "+1 (809) 571-9199",
+        "fax_number": "(844) 465-0101",
+        "country_phone_code": "+1",
+        "logo": "https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/2/2_logo.png",
+        "consent": "<table width=\"100%\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\">\r\n    <tbody>\r\n        <tr>\r\n            <td width=\"30%\" valign=\"top\">\r\n                <table width=\"100%\" style=\"border-collapse:collapse;border:none;\">\r\n\t\t\t\t\t<tbody>\r\n\t\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t\t<td colspan=\"2\" style=\"border:solid 2px;border-bottom:none;padding:0px 4px 0px 4px;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>OFFICE USE ONLY</span></strong>\r\n\t\t\t\t\t\t\t</td>\r\n\t\t\t\t\t\t</tr>\r\n\t\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t\t<td colspan=\"2\" style=\"border-right: 2px solid;border-bottom: 2px solid;border-left: 2px solid;border-image: initial;border-top: none;padding: 0px 4px;vertical-align: bottom;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>NAME:&nbsp;#patient_name#</span></strong>\r\n\t\t\t\t\t\t\t</td>\r\n\t\t\t\t\t\t</tr>\r\n\t\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t\t<td style=\"border-top: none;border-left: 2px solid;border-bottom: 2px solid;border-right: none;padding: 0px 4px;vertical-align: bottom;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>MR#:&nbsp;#mr_number#</span></strong>\r\n\t\t\t\t\t\t\t</td>\t\t\t\t\t\t\t\r\n\t\t\t\t\t\t\t<td style=\"border-top: none;border-left: none;border-bottom: 2px solid;border-right: 2px solid;padding: 0px 4px;vertical-align: bottom;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>DOB:&nbsp;#dob#</span></strong>\r\n\t\t\t\t\t\t\t</td>\r\n\t\t\t\t\t\t</tr>\r\n\t\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t\t<td colspan=\"2\" style=\"border-right: 2px solid;border-bottom: 2px solid;border-left: 2px solid;border-image: initial;border-top: none;padding: 0px 4px;vertical-align: bottom;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>DATE OF SERVICE:&nbsp;#dos#</span></strong>\r\n\t\t\t\t\t\t\t</td>\r\n\t\t\t\t\t\t</tr>\r\n\t\t\t\t\t</tbody>\r\n\t\t\t\t</table>\r\n            </td>            \r\n\t\t\t<td style=\"text-align: right;\" valign=\"top\">\r\n\t\t\t\t#logo#\r\n\t\t\t</td>\r\n        </tr>\r\n    </tbody>\r\n</table>\r\n<br>\r\n<table width=\"100%\">\r\n    <tr>\t\r\n\t\t<td style=\"text-align: center !important;text-decoration: underline !important;font-size: 22px !important;font-weight: bold;\">\r\n\t\t\tConsent for Service\r\n\t\t</td>\r\n    </tr>\r\n</table>\r\n<br>\r\n<table>\r\n    <tr>\r\n\t\t<td style=\"text-align: justify;\">\r\n\t\t\t<p><span style=\"text-decoration: underline !important;font-weight: bold;\">CONSENT TO MEDICAL AND SURGICAL PROCEDURES</span><br>\r\n\t\t\tThe undersigned consents to the procedures that may be performed while a patient of <strong>#organization#</strong>, including emergency treatment or procedures, local anesthesia, psychosocial counseling, or services rendered to the patient under the general and special instructions of the patient's primary care provider. This consent for treatment/procedure to be performed shall stay in force until the undersigned or the undersigned's legal representative rescinds such permission, which may be made verbally or in writing to <strong>#organization#</strong>.</p>\r\n\t\t\t<br>\r\n\t\t\t<p><span style=\"text-decoration: underline !important;font-weight: bold;\">ASSIGNMENT OF BENEFITS</span><br>\r\n\t\t\tThe undersigned consents to the procedures that may be performed while a patient of <strong>#organization#</strong>, including emergency treatment or procedures, local anesthesia, psychosocial counseling, or services rendered to the patient under the general and special instructions of the patient's primary care provider. This consent for treatment/procedure to be performed shall stay in force until the undersigned or the undersigned's legal representative rescinds such permission, which may be made verbally or in writing to <strong>#organization#</strong>.</p>\r\n\t\t\t<br>\r\n\t\t\t<p><span style=\"text-decoration: underline !important;font-weight: bold;\">FINANCIAL/INSURANCE INFORMATION</span><br>\r\n\t\t\tThe undersigned certifies that the information he/she has given concerning his/her finances and insurance is accurate and correct. The undersigned affirms that he/she will be responsible for advising the staff of <strong>#organization#</strong> in the event of a change in his/her monthly income and/or insurance coverage. Inaccurate information may be grounds for collection for service previously rendered and/or <strong>#organization#</strong>'s inability to provide future services.</p>\r\n\t\t\t<br>\r\n\t\t\t<p><span style=\"text-decoration: underline !important;font-weight: bold;\">MEDICAL RECORDS</span><br>\r\n\t\t\tThe medical record is the property of <strong>#organization#</strong>. Arrangements can be made to attain a copy. A fee may be involved.</p>\r\n\t\t\t<br>\r\n\t\t\t<p><span style=\"text-decoration: underline !important;font-weight: bold;\">CO-PAY ACKNOWLEDGMENT</span><br>\r\n\t\t\tThe undersigned acknowledge that they are responsible for any co-pays paid to <strong>#organization#</strong> upon each provider visit. This figure is subject to change dependent on the undersigned's financial insurance status.</p>\r\n\t\t\t<br>\r\n\t\t\t<p><span style=\"text-decoration: underline !important;font-weight: bold;\">ACKNOWLEDGMENT</span><br>\r\n\t\t\tThe undersigned certifies that he/she has read the foregoing, received a copy thereof, and is the patient, patient's legal representative, or is duly authorized by the patient's general agent to execute above and accept its items.</p>\r\n\t\t</td>\r\n    </tr>\r\n</table>\r\n<br><br>\r\n<table width=\"100%\" style=\"border-collapse:collapse;border:none;\">\r\n    <tbody>\r\n        <tr>\r\n            <td style=\"width: 34%;padding: 0px 4px;\">\r\n                #patient_signature#\r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;\">&nbsp;\r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;\">\r\n                #witness_signature#\r\n            </td>\r\n        </tr>\r\n        <tr>\r\n            <td style=\"width: 34%;border-right: none;border-bottom: none;border-left: none;border-image: initial;border-top: 2px solid;padding: 0px 4px;vertical-align: bottom;\">\r\n                <strong>Patient Name:</strong>&nbsp;#patient_name#\r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;vertical-align: bottom;\">&nbsp;\r\n            </td>\r\n            <td style=\"width: 33%;border-right: none;border-bottom: none;border-left: none;border-image: initial;border-top: 2px solid;padding: 0px 4px;vertical-align: bottom;\">\r\n                <strong>Witness By:</strong>&nbsp;#witness_name#\r\n            </td>\r\n        </tr>\r\n        <tr>\r\n            <td style=\"width: 34%;padding: 0px 4px;vertical-align: bottom;\">\r\n               <strong>Date and Time:</strong>&nbsp;#current_date#\r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;vertical-align: bottom;\">&nbsp;               \r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;vertical-align: bottom;\">\r\n                <strong>Date and Time:&nbsp;</strong>&nbsp;#current_date#\r\n            </td>\r\n        </tr>\r\n    </tbody>\r\n</table>\r\n<hr style=\"display:#hide_element#\">\r\n<div class=\"page_break\"></div>\r\n<br>\r\n<br>\r\n<table width=\"100%\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\">\r\n    <tbody>\r\n        <tr>\r\n            <td width=\"30%\" valign=\"top\">\r\n                <table width=\"100%\" style=\"border-collapse:collapse;border:none;\">\r\n\t\t\t\t\t<tbody>\r\n\t\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t\t<td colspan=\"2\" style=\"border:solid 2px;border-bottom:none;padding:0px 4px 0px 4px;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>OFFICE USE ONLY</span></strong>\r\n\t\t\t\t\t\t\t</td>\r\n\t\t\t\t\t\t</tr>\r\n\t\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t\t<td colspan=\"2\" style=\"border-right: 2px solid;border-bottom: 2px solid;border-left: 2px solid;border-image: initial;border-top: none;padding: 0px 4px;vertical-align: bottom;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>NAME:&nbsp;#patient_name#</span></strong>\r\n\t\t\t\t\t\t\t</td>\r\n\t\t\t\t\t\t</tr>\r\n\t\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t\t<td style=\"border-top: none;border-left: 2px solid;border-bottom: 2px solid;border-right: none;padding: 0px 4px;vertical-align: bottom;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>MR#:&nbsp;#mr_number#</span></strong>\r\n\t\t\t\t\t\t\t</td>\t\t\t\t\t\t\t\r\n\t\t\t\t\t\t\t<td style=\"border-top: none;border-left: none;border-bottom: 2px solid;border-right: 2px solid;padding: 0px 4px;vertical-align: bottom;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>DOB:&nbsp;#dob#</span></strong>\r\n\t\t\t\t\t\t\t</td>\r\n\t\t\t\t\t\t</tr>\r\n\t\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t\t<td colspan=\"2\" style=\"border-right: 2px solid;border-bottom: 2px solid;border-left: 2px solid;border-image: initial;border-top: none;padding: 0px 4px;vertical-align: bottom;\">\r\n\t\t\t\t\t\t\t\t<strong><span style='font-size:11px;font-family:\"Verdana\",sans-serif;'>DATE OF SERVICE:&nbsp;#dos#</span></strong>\r\n\t\t\t\t\t\t\t</td>\r\n\t\t\t\t\t\t</tr>\r\n\t\t\t\t\t</tbody>\r\n\t\t\t\t</table>\r\n            </td>            \r\n\t\t\t<td style=\"text-align: right;\" valign=\"top\">\r\n\t\t\t\t#logo#\r\n\t\t\t</td>\r\n        </tr>\r\n    </tbody>\r\n</table>\r\n<br>\r\n<table width=\"100%\">\r\n    <tr>\t\r\n\t\t<td style=\"text-align: center !important;text-decoration: underline !important;font-size: 22px !important;font-weight: bold;\">\r\n\t\t\tPRIVACY NOTICE\r\n\t\t</td>\r\n    </tr>\r\n</table>\r\n<br>\r\n<table>\r\n    <tr>\r\n\t\t<td style=\"text-align: justify;\">\r\n\t\t\t<p style=\"font-size: 16px !important;font-weight: bold;\">This Notice Describes How Medical Information About You May Be Used And Disclosed And How You Can Get Access To This Information. Please Review It Carefully.</p><br>\r\n\t\t\t<p>In the course of receiving services from <strong>#organization#</strong>, we will be provided with health information about you. We have a duty under the law to maintain the privacy of this information, and to inform you of our legal obligations. This notice may change from time to time, and we will inform you of any changes. We will abide by this Notice or the most recent Notice. <strong>#organization#</strong> will use this information, and/or disclose it to other people, for the following purposes:</p>\r\n\t\t\t<p>\r\n\t\t\t\t<ul>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>To Provide Medical Treatment To You.</strong> We will use this information to provide the very best medical treatment we can. We will consult with doctors, nurses, and other medical professionals when necessary to assure that the right services are being provided to you.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>To Assist Others In Providing Medical Services To You.</strong> We will disclose this information to other medical professionals who are treating you or helping in your treatment, such as laboratory testers, pharmacists, specialists, etc.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>To Obtain And Secure Payment For Our Services.</strong> We will disclose this information to people, such as insurance companies, Medi-Cal, Medicare, etc., in order to receive compensation for the services we provide. We may also disclose this information to billing services or other groups that facilitate payment.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>To Assess And Improve Our Services.</strong> We will use health information in order to evaluate the services we provide, the way we provide them, and the people who provide them. This is done in order to constantly improve the services we provide.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>Disclosures Required By Law.</strong> Under certain circumstances, state and federal laws require that all holders of health information, not just us, disclose health information to government authorities including courts and public health agencies that monitor health. <strong>We will, of course, disclose only that information that is required by law to be disclosed.</strong></li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>Disclosures Benefiting Research.</strong> We are engaged in ongoing research into the causes and cures of various medical conditions, and to this end, we operate a Research Department. In order to assist this goal, we may disclose health information to the members of the research department. This information will, of course remain confidential within the Research Department.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>Psychotherapy Notes.</strong> We will not use or disclose your medical information with respect to Psychotherapy Notes without your written authorization, except for carrying out treatment, payment or health care operations by your mental health practitioner, to use in our own training programs, or to defend ourselves in a legal action by you.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>Information about Health Services.</strong> We may contact you to remind you about appointments, and to inform you about services, such as pharmacy or other health services that we believe may be beneficial to your health and well being.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>Marketing Activities.</strong> We will not use or disclose medical information about you for third-party marketing purposes without your written authorization.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\"><strong>Sale of Medical Information.</strong> We will not sell medical information about you without your written authorization.</li>\r\n\t\t\t\t</ul>\r\n\t\t\t</p>\r\n\t\t</td>\r\n    </tr>\r\n</table>\r\n<div class=\"page_break\"></div>\r\n<br>\r\n<table>\r\n    <tr>\r\n\t\t<td style=\"text-align: justify;\">\t\t\t\r\n\t\t\t<p><strong>YOUR RIGHTS REGARDING THE INFORMATION ON THE PREVIOUS PAGE:</strong></p>\r\n\t\t\t<p>\r\n\t\t\t\t<ul>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\">WE WILL USE OR DISCLOSE ONLY THE MINIMUM NECESSARY HEALTH INFORMATION IN ORDER TO MEET THE PURPOSES AND REQUIREMENTS ON THE PREVIOUS PAGE.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\">You may request that restrictions be placed on the above uses of medical information, or you may revoke this authorization. However, we do not have to agree to the restriction if we feel that such uses are necessary in order to provide you with the best possible services, unless you request that we restrict your medical information to a health plan as long as (a) the disclosure is for the purpose of carrying out payment or health care operations and is not otherwise required by law, and (b) the medical information pertains solely to a health care item or service for which you have paid us in full.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\">You have the right to be informed about any breach of unsecured medical information, unless our risk assessment determines that that there is a low probability that your medical information has been compromised.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\">You may request that health information be disclosed to you in certain ways, such as a specific mailing address. We will try our best to reasonably accommodate these requests.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\">You may request to be provided with access to and copies of certain of the health information about you that we maintain.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\">If you believe that health information is inaccurate or incomplete, you may request that the medical information be amended.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\">You may ask for a record of the disclosures made by us of your health information.</li>\r\n\t\t\t\t\t<li style=\"margin-bottom: 10px;\">You may ask for a copy of this Notice.</li>\r\n\t\t\t\t</ul>\r\n\t\t\t</p><br>\r\n\t\t\t<p>If you have any questions or complaints about this Notice or about your health information, please call our Privacy Department at #md_company_phone# You may also contact the Secretary of the United States Department of Health and Human Services. You will not be retaliated against in any way for asking questions or making a complaint</p><br>\r\n\t\t\t<p>The effective date of this Notice is\t<span style=\"text-decoration: underline !important;font-weight: bold;\">#current_date2#</span>, and lasts for as long as you are a client of <strong>#organization#</strong>.</p><br>\r\n\t\t\t<p><strong>ACCEPTANCE:</strong> I certify that I have read, understand, and agree to the terms of this Notice, and authorize the release of the above information</p><br>\r\n\t\t</td>\r\n    </tr>\r\n</table>\r\n\r\n<table width=\"100%\" style=\"border-collapse:collapse;border:none;\">\r\n    <tbody>\r\n        <tr>\r\n            <td style=\"width: 34%;padding: 0px 4px;\">\r\n                #patient_signature#\r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;\">&nbsp;\r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;\">\r\n                #witness_signature#\r\n            </td>\r\n        </tr>\r\n        <tr>\r\n            <td style=\"width: 34%;border-right: none;border-bottom: none;border-left: none;border-image: initial;border-top: 2px solid;padding: 0px 4px;vertical-align: bottom;\">\r\n                <strong>Patient Name:</strong>&nbsp;#patient_name#\r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;vertical-align: bottom;\">&nbsp;\r\n            </td>\r\n            <td style=\"width: 33%;border-right: none;border-bottom: none;border-left: none;border-image: initial;border-top: 2px solid;padding: 0px 4px;vertical-align: bottom;\">\r\n                <strong>Witness By:</strong>&nbsp;#witness_name#\r\n            </td>\r\n        </tr>\r\n        <tr>\r\n            <td style=\"width: 34%;padding: 0px 4px;vertical-align: bottom;\">\r\n               <strong>Date and Time:</strong>&nbsp;#current_date#\r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;vertical-align: bottom;\">&nbsp;               \r\n            </td>\r\n            <td style=\"width: 33%;padding: 0px 4px;vertical-align: bottom;\">\r\n                <strong>Date and Time:&nbsp;</strong>&nbsp;#current_date#\r\n            </td>\r\n        </tr>\r\n    </tbody>\r\n</table>"
+    }
+}
+
+
+
+
+4. 
+https://api.orkachart.com/v1/leads/country-organization/CO
+{
+    "status": "success",
+    "data": [
+        {
+            "organization": "Purple Heart Health Center",
+            "phone_number": "+57 (604) 201-3000",
+            "fax_number": "(844) 465-0050",
+            "country_phone_code": "+57",
+            "logo": "https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/3/3_logo.png"
+        }
+    ]
+}
+
+
+5.
+This post request for submission
+https://api.orkachart.com/v1/leads/signup 
+
+payload exampel body:{
+    "id_facility": "3",
+    "id_insurance_company_country": "1",
+    "other_insurance_company": "",
+    "no_insurance": "true", //true or false
+    "first_name": "John",
+    "middle_name": "",
+    "last_name": "Doe",
+    "gender": "Male", //Male or Female
+    "address": "",
+    "apt_unit": "",
+    "city": "",
+    "state": "",
+    "zip_code": "",
+    "address_fmp": "",
+    "apt_unit_fmp": "",
+    "city_fmp": "",
+    "state_fmp": "",
+    "zip_code_fmp": "",
+    "phone_number": "+1 (800) 111-2233",
+    "email": "test@email.com",
+    "ssn": "111-22-3333",
+    "dob": "1980-05-05",
+    "photo": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/",
+    "patient_signature": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXwAAABuCAYAAAAkjqjuAAAFM0lEQVR4AezUYY7aMBAGUNT/",
+    "va_letter": "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MNCjQgMCBvYmoKPDwKL1R5cGUvWE9iamV",
+    "photo_id": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/",
+    "ID_name": "John",
+    "ID_last_name": "Doe",
+    "ID_dob": "1980-05-05",
+    "ID_number": "R219-253-99-300-0",    
+    "weight": "165",
+    "height_feet": "5",
+    "height_inches": "07",
+    "food_drug_allergies":"fish, penicillin",
+    "current_medications": ["advil","acetaminophen","insuline","hydrochlorothiazide"]
+}
+
+and its response
+{
+    "status": "success",
+    "message": "Patient created successfully",
+    "record_id": 4
+}

@@ -16,74 +16,73 @@ export async function GET(request: Request) {
   }
 
   try {
-    if (country) {
-      // Fetch facilities for specific country
-      const response = await fetch(`${BASE_URL}/list-facilities/${country}`, {
-        headers: {
-          'X-API-Key': API_KEY,
-          'Accept': 'application/json'
+    // Fetch all facilities from the API
+    const response = await fetch(`${BASE_URL}/list-facilities`, {
+      headers: {
+        'X-API-Key': API_KEY,
+        'Accept': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+    
+    if (data.status === 'success' && data.data) {
+      // Fetch detailed info for each facility to get logos
+      const facilityPromises = data.data.map(async (facility: any) => {
+        try {
+          const detailResponse = await fetch(`${BASE_URL}/info-facility/${facility.id_facility}`, {
+            headers: {
+              'X-API-Key': API_KEY,
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (detailResponse.ok) {
+            const detailData = await detailResponse.json();
+            return {
+              id: facility.id_facility,
+              name: facility.facility_name,
+              city: facility.city,
+              country: facility.country_iso === 'DO' ? 'Dominican Republic' : 
+                       facility.country_iso === 'CO' ? 'Colombia' : facility.country_iso,
+              country_iso: facility.country_iso,
+              logo: detailData.data?.logo || ''
+            };
+          } else {
+            // Fallback if detail fetch fails
+            return {
+              id: facility.id_facility,
+              name: facility.facility_name,
+              city: facility.city,
+              country: facility.country_iso === 'DO' ? 'Dominican Republic' : 
+                       facility.country_iso === 'CO' ? 'Colombia' : facility.country_iso,
+              country_iso: facility.country_iso,
+              logo: ''
+            };
+          }
+        } catch (error) {
+          console.error(`Error fetching details for facility ${facility.id_facility}:`, error);
+          // Fallback if detail fetch fails
+          return {
+            id: facility.id_facility,
+            name: facility.facility_name,
+            city: facility.city,
+            country: facility.country_iso === 'DO' ? 'Dominican Republic' : 
+                     facility.country_iso === 'CO' ? 'Colombia' : facility.country_iso,
+            country_iso: facility.country_iso,
+            logo: ''
+          };
         }
       });
 
-      const data = await response.json();
-      
-      const facilities = data.data.map((facility: any) => ({
-        id: facility.id_facility,
-        name: facility.facility_name,
-        city: facility.city,
-        country: country === 'CO' ? 'Colombia' : 'Dominican Republic',
-        country_iso: country,
-        logo: ''
-      }));
+      const facilities = await Promise.all(facilityPromises);
 
       return NextResponse.json({
         status: 'success',
         data: facilities
       });
     } else {
-      // Call both APIs in parallel (fallback)
-      const [colombiaResponse, drResponse] = await Promise.all([
-        fetch(`${BASE_URL}/list-facilities/CO`, {
-          headers: {
-            'X-API-Key': API_KEY,
-            'Accept': 'application/json'
-          }
-        }),
-        fetch(`${BASE_URL}/list-facilities/DO`, {
-          headers: {
-            'X-API-Key': API_KEY,
-            'Accept': 'application/json'
-          }
-        })
-      ]);
-
-      const colombiaData = await colombiaResponse.json();
-      const drData = await drResponse.json();
-
-      // Combine facilities from both countries
-      const allFacilities = [
-        ...colombiaData.data.map((facility: any) => ({
-          id: facility.id_facility,
-          name: facility.facility_name,
-          city: facility.city,
-          country: 'Colombia',
-          country_iso: 'CO',
-          logo: ''
-        })),
-        ...drData.data.map((facility: any) => ({
-          id: facility.id_facility,
-          name: facility.facility_name,
-          city: facility.city,
-          country: 'Dominican Republic',
-          country_iso: 'DO',
-          logo: ''
-        }))
-      ];
-
-      return NextResponse.json({
-        status: 'success',
-        data: allFacilities
-      });
+      throw new Error('Invalid API response');
     }
 
   } catch (error) {
@@ -91,11 +90,9 @@ export async function GET(request: Request) {
     
     // Return mock data for development
     const mockFacilities = [
-      { id: 1, name: 'Puerto Plata Medical', city: 'Puerto Plata', country: 'Dominican Republic', country_iso: 'DO', logo: '' },
-      { id: 2, name: 'Sosua Health Center', city: 'Sosua', country: 'Dominican Republic', country_iso: 'DO', logo: '' },
-      { id: 3, name: 'Bavaro Clinic', city: 'Bavaro', country: 'Dominican Republic', country_iso: 'DO', logo: '' },
-      { id: 4, name: 'Bogotá Medical Center', city: 'Bogotá', country: 'Colombia', country_iso: 'CO', logo: '' },
-      { id: 5, name: 'Medellín Healthcare', city: 'Medellín', country: 'Colombia', country_iso: 'CO', logo: '' }
+      { id: 2, name: 'Holistic Care Puerto Plata', city: 'Puerto Plata', country: 'Dominican Republic', country_iso: 'DO', logo: 'https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/2/2_logo.png' },
+      { id: 3, name: 'Purple Heart Health', city: 'Medellin', country: 'Colombia', country_iso: 'CO', logo: 'https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/3/3_logo.png' },
+      { id: 4, name: 'Holistic Care Sosua', city: 'Sosua', country: 'Dominican Republic', country_iso: 'DO', logo: '' }
     ];
 
     return NextResponse.json({

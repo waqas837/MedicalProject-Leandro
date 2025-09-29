@@ -23,7 +23,8 @@ import {
   Signature,
   Building2,
   Check,
-  X
+  X,
+  Stethoscope
 } from 'lucide-react';
 
 // Define the facility type
@@ -45,9 +46,9 @@ const PatientRegistration = () => {
   const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
   const [shakingFields, setShakingFields] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
-    // Facility Selection
-    country: '',
-    facility: '',
+    // Office Selection
+    selectedOffice: '',
+    agreeToTerms: false,
     
     // Personal Information
     firstName: '',
@@ -83,15 +84,18 @@ const PatientRegistration = () => {
     disabilityLetter: null
   });
 
+  useEffect(() => {
+    fetchAllFacilities();
+  }, []);
+
   const steps = [
-    { id: 0, title: 'Country', icon: MapPin },
-    { id: 1, title: 'Facility', icon: Building2 },
-    { id: 2, title: 'Personal Info', icon: User },
-    { id: 3, title: 'Identity', icon: Shield },
-    { id: 4, title: 'Contact', icon: Phone },
-    { id: 5, title: 'Medical', icon: Heart },
-    { id: 6, title: 'Veteran', icon: Star },
-    { id: 7, title: 'Documents', icon: FileText }
+    { id: 0, title: 'Office', icon: Building2 },
+    { id: 1, title: 'Personal Info', icon: User },
+    { id: 2, title: 'Identity', icon: Shield },
+    { id: 3, title: 'Contact', icon: Phone },
+    { id: 4, title: 'Medical', icon: Heart },
+    { id: 5, title: 'Veteran', icon: Star },
+    { id: 6, title: 'Documents', icon: FileText }
   ];
 
   const branches = ["Army", "Marine Corps", "Navy", "Air Force", "Space Force", "Coast Guard"];
@@ -123,9 +127,10 @@ const PatientRegistration = () => {
       case 'emergencyContactName':
       case 'emergencyContactPhone':
         return value && value.length >= 2;
-      case 'country':
-      case 'facility':
+      case 'selectedOffice':
         return value && value.length > 0;
+      case 'agreeToTerms':
+        return value === true;
       default:
         return value && value.length > 0;
     }
@@ -205,6 +210,52 @@ const PatientRegistration = () => {
         </div>
       </div>
     );
+  };
+
+  const fetchAllFacilities = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/facilities');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('API Response:', data); // Debug log
+        
+        // Check if data.data exists and is an array
+        if (data.data && Array.isArray(data.data)) {
+          // The API route already fetches logos, so use the data directly
+          console.log('Transformed facilities:', data.data); // Debug log
+          setFacilities(data.data);
+        } else {
+          console.error('Invalid API response structure:', data);
+          // Fallback to mock data
+          const mockFacilities = [
+            { id: 2, name: 'Holistic Care Puerto Plata', city: 'Puerto Plata', country: 'Dominican Republic', country_iso: 'DO', logo: 'https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/2/2_logo.png' },
+            { id: 3, name: 'Purple Heart Health', city: 'Medellin', country: 'Colombia', country_iso: 'CO', logo: 'https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/3/3_logo.png' },
+            { id: 4, name: 'Holistic Care Sosua', city: 'Sosua', country: 'Dominican Republic', country_iso: 'DO', logo: '' }
+          ];
+          setFacilities(mockFacilities);
+        }
+      } else {
+        console.error('Failed to fetch facilities');
+        // Fallback to mock data
+        const mockFacilities = [
+          { id: 2, name: 'Holistic Care Puerto Plata', city: 'Puerto Plata', country: 'Dominican Republic', country_iso: 'DO', logo: 'https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/2/2_logo.png' },
+          { id: 3, name: 'Purple Heart Health', city: 'Medellin', country: 'Colombia', country_iso: 'CO', logo: 'https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/3/3_logo.png' },
+          { id: 4, name: 'Holistic Care Sosua', city: 'Sosua', country: 'Dominican Republic', country_iso: 'DO', logo: '' }
+        ];
+        setFacilities(mockFacilities);
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      // Fallback to mock data
+      const mockFacilities = [
+        { id: 2, name: 'Holistic Care Puerto Plata', city: 'Puerto Plata', country: 'Dominican Republic', country_iso: 'DO', logo: 'https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/2/2_logo.png' },
+        { id: 3, name: 'Purple Heart Health', city: 'Medellin', country: 'Colombia', country_iso: 'CO', logo: 'https://orkachart.s3.us-east-2.amazonaws.com/api/facilities/3/3_logo.png' },
+        { id: 4, name: 'Holistic Care Sosua', city: 'Sosua', country: 'Dominican Republic', country_iso: 'DO', logo: '' }
+      ];
+      setFacilities(mockFacilities);
+    }
+    setLoading(false);
   };
 
   const fetchFacilitiesByCountry = async (countryCode: string) => {
@@ -292,16 +343,24 @@ const PatientRegistration = () => {
     }
   };
 
+  const goToStep = (stepIndex: number) => {
+    // Only allow going to steps that have been completed or are the next step
+    if (stepIndex <= currentStep + 1) {
+      setCurrentStep(stepIndex);
+      setInvalidFields(new Set());
+      setShakingFields(new Set());
+    }
+  };
+
   const getCurrentStepFields = () => {
     switch (currentStep) {
-      case 0: return ['country'];
-      case 1: return ['facility'];
-      case 2: return ['firstName', 'lastName', 'dateOfBirth', 'currentAddress', 'fmpAddress'];
-      case 3: return ['patientId', 'ssn'];
-      case 4: return ['email', 'cellPhone', 'emergencyContactName', 'emergencyContactPhone'];
-      case 5: return ['weight', 'height', 'painLevel'];
-      case 6: return ['isVeteran'];
-      case 7: return ['disabilityLetter'];
+      case 0: return ['selectedOffice', 'agreeToTerms'];
+      case 1: return ['firstName', 'lastName', 'dateOfBirth', 'currentAddress', 'fmpAddress'];
+      case 2: return ['patientId', 'ssn'];
+      case 3: return ['email', 'cellPhone', 'emergencyContactName', 'emergencyContactPhone'];
+      case 4: return ['weight', 'height', 'painLevel'];
+      case 5: return ['isVeteran'];
+      case 6: return ['disabilityLetter'];
       default: return [];
     }
   };
@@ -348,70 +407,114 @@ const PatientRegistration = () => {
     switch (currentStep) {
       case 0:
         return (
-          <div className="space-y-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Select Your Country</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                Country *
-                <AnimatedCheckmark fieldName="country" />
-              </label>
-                <select
-                  name="country"
-                  value={formData.country}
-                  onChange={(e) => {
-                    handleInputChange('country', e.target.value);
-                    if (e.target.value) {
-                      fetchFacilitiesByCountry(e.target.value);
-                    }
-                  }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  required
-                >
-                <option value="">Select Country</option>
-                <option value="CO">Colombia 🇨🇴</option>
-                <option value="DO">Dominican Republic 🇩🇴</option>
-              </select>
+          <div className="space-y-8">
+            {/* Welcome Message */}
+            <div className="text-center bg-emerald-50 border border-emerald-200 rounded-lg p-6">
+              <h3 className="text-2xl font-bold text-emerald-900 mb-2">Welcome to Patient Registration</h3>
+              <p className="text-emerald-700">Please select your preferred office location to begin</p>
             </div>
-          </div>
-        );
 
-      case 1:
-        return (
-          <div className="space-y-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Select Your Facility</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                Facility *
-                <AnimatedCheckmark fieldName="facility" />
+            {/* Office Selection as Icons */}
+            <div className="text-center mb-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Select Your Office</h4>
+              <p className="text-gray-600 mb-6">Click on an office to select it</p>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
+                {facilities.map((facility, index) => {
+                  const facilityId = facility?.id?.toString() || `facility-${index}`;
+                  return (
+                    <div
+                      key={facilityId}
+                      onClick={() => handleInputChange('selectedOffice', facilityId)}
+                      className={`relative flex flex-col items-center p-4 sm:p-6 border-2 rounded-lg cursor-pointer transition-all duration-200 w-full sm:w-auto sm:min-w-[200px] max-w-[280px] ${
+                        formData.selectedOffice === facilityId
+                          ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                          : 'border-gray-200 hover:border-emerald-300 hover:shadow-sm'
+                      }`}
+                    >
+                    {/* Company Logo (if available) */}
+                    {facility.logo ? (
+                      <div className="w-24 h-24 mb-4 flex items-center justify-center relative">
+                        <img 
+                          src={facility.logo} 
+                          alt={`${facility.name} logo`}
+                          className="w-full h-full object-contain"
+                        />
+                        {/* Medical Icon Overlay */}
+                        <div 
+                          className="absolute -top-2 -left-4 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors duration-200 cursor-help group"
+                        >
+                          <Stethoscope className="w-3 h-3 text-gray-600" />
+                          {/* Animated Tooltip */}
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-10">
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                            Medical Facility
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Office Icon (fallback when no logo) */
+                      <div className="w-16 h-16 mb-4 flex items-center justify-center bg-emerald-100 rounded-full">
+                        <Stethoscope className="w-8 h-8 text-emerald-600" />
+                      </div>
+                    )}
+                    
+                    {/* Office Name */}
+                    <h5 className="font-semibold text-gray-900 text-center mb-2">{facility.name}</h5>
+                    <p className="text-sm text-gray-600 text-center">{facility.city}</p>
+                    <p className="text-xs text-gray-500 text-center">{facility.country}</p>
+                    
+                    {/* Selection Checkmark */}
+                    {formData.selectedOffice === facilityId && (
+                      <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Terms and Conditions */}
+            <div className="border-t pt-6">
+              <label className="flex items-start space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.agreeToTerms}
+                  onChange={(e) => handleInputChange('agreeToTerms', e.target.checked)}
+                  className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-700">
+                  I agree to the{' '}
+                  <a href="#" className="text-emerald-600 hover:text-emerald-500 underline">
+                    Terms and Conditions
+                  </a>{' '}
+                  and{' '}
+                  <a href="#" className="text-emerald-600 hover:text-emerald-500 underline">
+                    Privacy Policy
+                  </a>
+                </span>
               </label>
-              {loading ? (
-                <div className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center">
-                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
-                  <span className="ml-2">Loading facilities...</span>
+              {invalidFields.has('agreeToTerms') && (
+                <div className="mt-3 flex items-center text-red-600">
+                  <X className="w-4 h-4 mr-2" />
+                  <span className="text-sm font-medium">Please agree to terms</span>
                 </div>
-              ) : (
-                <select
-                  name="facility"
-                  value={formData.facility}
-                  onChange={(e) => handleInputChange('facility', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  required
-                >
-                  <option value="">Select Facility</option>
-                  {facilities.map((facility) => (
-                    <option key={facility.id} value={facility.name}>
-                      {facility.name} - {facility.city}
-                    </option>
-                  ))}
-                </select>
               )}
             </div>
           </div>
         );
 
-      case 2:
+      case 1:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Personal Information</h3>
@@ -695,11 +798,14 @@ const PatientRegistration = () => {
       case 5:
         return (
           <div className="space-y-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Veteran Status</h3>
+            {/* <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Veteran Status</h3> */}
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4">Are you a Veteran? *</label>
-              <div className="flex space-x-6">
+              <div className="text-center mb-8">
+                <h2 className="text-xl font-black text-gray-900 mb-2">Are you a Veteran? *</h2>
+                <div className="w-24 h-1 bg-emerald-500 mx-auto rounded-full"></div>
+              </div>
+              <div className="flex justify-center space-x-8">
                 <label className="flex items-center">
                   <input
                     type="radio"
@@ -708,7 +814,7 @@ const PatientRegistration = () => {
                     onChange={() => handleInputChange('isVeteran', true)}
                     className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
                   />
-                  <span className="ml-2 text-gray-700">Yes</span>
+                  <span className="ml-2 text-gray-700 text-lg font-medium">Yes</span>
                 </label>
                 <label className="flex items-center">
                   <input
@@ -718,25 +824,59 @@ const PatientRegistration = () => {
                     onChange={() => handleInputChange('isVeteran', false)}
                     className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
                   />
-                  <span className="ml-2 text-gray-700">No</span>
+                  <span className="ml-2 text-gray-700 text-lg font-medium">No</span>
                 </label>
               </div>
             </div>
 
-            {formData.isVeteran && (
+            {/* Warning message for "No" selection */}
+            {formData.isVeteran === false && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+                <div className="text-amber-600 mb-2">
+                  <svg className="w-8 h-8 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-amber-800 mb-2">Service Limitation Notice</h3>
+                <p className="text-amber-700">
+                  Our services are only available for US veterans at this moment. We apologize for any inconvenience.
+                </p>
+              </div>
+            )}
+
+            {/* Branch selection for "Yes" */}
+            {formData.isVeteran === true && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Branch of Service *</label>
-                <select
-                  value={formData.branchOfService}
-                  onChange={(e) => handleInputChange('branchOfService', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  required
-                >
-                  <option value="">Select Branch</option>
-                  {branches.map((branch) => (
-                    <option key={branch} value={branch}>{branch}</option>
+                <label className="block text-lg font-semibold text-gray-700 mb-6 text-center">Select Your Branch of Service *</label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {branches.map((branch, index) => (
+                    <div
+                      key={branch}
+                      onClick={() => handleInputChange('branchOfService', branch)}
+                      className={`relative flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                        formData.branchOfService === branch
+                          ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                          : 'border-gray-200 hover:border-emerald-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="w-16 h-16 mb-3 flex items-center justify-center">
+                        <img 
+                          src={`/${index + 1}.jpg`}
+                          alt={`${branch} emblem`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <h4 className="font-semibold text-gray-900 text-center text-sm">{branch}</h4>
+                      {formData.branchOfService === branch && (
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </select>
+                </div>
               </div>
             )}
 
@@ -817,13 +957,18 @@ const PatientRegistration = () => {
                 return (
                   <div key={step.id} className="flex items-center flex-shrink-0">
                     <div className="flex flex-col items-center">
-                      <div className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 ${
-                        isActive 
-                          ? 'bg-emerald-600 border-emerald-600 text-white' 
-                          : isCompleted 
-                            ? 'bg-emerald-100 border-emerald-600 text-emerald-600' 
-                            : 'bg-white border-gray-300 text-gray-400'
-                      }`}>
+                      <div 
+                        onClick={() => goToStep(step.id)}
+                        className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 ${
+                          isActive 
+                            ? 'bg-emerald-600 border-emerald-600 text-white' 
+                            : isCompleted 
+                              ? 'bg-emerald-100 border-emerald-600 text-emerald-600 hover:bg-emerald-200' 
+                              : currentStep >= step.id - 1
+                                ? 'bg-white border-gray-300 text-gray-400 hover:bg-gray-50 hover:border-gray-400'
+                                : 'bg-white border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
+                        }`}
+                      >
                         {isCompleted ? (
                           <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                         ) : (

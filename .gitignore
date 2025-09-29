@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# API files with sensitive data
+Orkachart API.postman_collection.json
+allAPIresponses.txt
+
 # vercel
 .vercel
 
