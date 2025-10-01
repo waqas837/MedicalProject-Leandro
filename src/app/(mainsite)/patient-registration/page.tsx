@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactCountryFlag from 'react-country-flag';
+import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, 
   Calendar, 
@@ -21,7 +22,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Upload,
-  Signature,
+  FileSignature,
   Building2,
   Check,
   X,
@@ -41,8 +42,10 @@ interface Facility {
 const PatientRegistration = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [insurances, setInsurances] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [validatedFields, setValidatedFields] = useState<Set<string>>(new Set());
+  const sigCanvas = useRef<SignatureCanvas>(null);
   const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
   const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
   const [shakingFields, setShakingFields] = useState<Set<string>>(new Set());
@@ -57,12 +60,22 @@ const PatientRegistration = () => {
     firstName: '',
     lastName: '',
     dateOfBirth: '',
-    currentAddress: '',
-    fmpAddress: '',
     sex: '',
     dobMonth: '',
     dobDay: '',
     dobYear: '',
+    
+    // Address Information
+    currentAddress: '',
+    currentCity: '',
+    currentState: '',
+    currentZip: '',
+    currentCountry: '',
+    fmpAddress: '',
+    fmpCity: '',
+    fmpState: '',
+    fmpZip: '',
+    fmpCountry: '',
     
     // ID Card Upload
     idCardImage: null,
@@ -86,21 +99,33 @@ const PatientRegistration = () => {
     
     // Medical Information
     weight: '',
-    height: '',
-    painLevel: '',
-    allergies: '',
-    medications: '',
+    heightFeet: '',
+    heightInches: '',
+    painLevel: '0',
+    allergies: [],
+    allergyInput: '',
+    medications: [],
+    medicationInput: '',
+    
+    // Insurance Information
+    selectedInsurance: '',
     
     // Veteran Status
     isVeteran: false,
     branchOfService: '',
     
     // Documentation
-    disabilityLetter: null
+    hasDisabilityLetter: null,
+    disabilityLetter: null,
+    
+    // Consent and Signature
+    patientSignature: null,
+    consentAccepted: false
   });
 
   useEffect(() => {
     fetchAllFacilities();
+    fetchInsurances();
   }, []);
 
   // Validate DOB for 18+ requirement
@@ -132,11 +157,13 @@ const PatientRegistration = () => {
     { id: 1, title: 'ID Card', icon: Shield },
     { id: 2, title: 'Review Data', icon: CheckCircle },
     { id: 3, title: 'Personal Info', icon: User },
-    { id: 4, title: 'Identity', icon: Shield },
+    { id: 4, title: 'Identity', icon: User },
     { id: 5, title: 'Contact', icon: Phone },
     { id: 6, title: 'Medical', icon: Heart },
-    { id: 7, title: 'Veteran', icon: Star },
-    { id: 8, title: 'Documents', icon: FileText }
+    { id: 7, title: 'Insurance', icon: Shield },
+    { id: 8, title: 'Veteran', icon: Star },
+    { id: 9, title: 'Documents', icon: FileText },
+    { id: 10, title: 'Consent', icon: FileSignature }
   ];
 
   const branches = ["Army", "Marine Corps", "Navy", "Air Force", "Space Force", "Coast Guard"];
@@ -388,6 +415,32 @@ const PatientRegistration = () => {
     setLoading(false);
   };
 
+  // Fetch insurances
+  const fetchInsurances = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/insurances?country=CO');
+      const data = await response.json();
+      
+      if (data.status === 'success' && data.data) {
+        // Transform the data to match our expected format
+        const transformedInsurances = data.data.map((insurance: any) => ({
+          id: insurance.id_insurance_company_country,
+          company: insurance.company,
+          code: insurance.code || 'N/A',
+          country_iso: insurance.country_iso
+        }));
+        setInsurances(transformedInsurances);
+      } else {
+        console.error('Failed to fetch insurances:', data);
+      }
+    } catch (error) {
+      console.error('Error fetching insurances:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchFacilitiesByCountry = async (countryCode: string) => {
     setLoading(true);
     try {
@@ -416,6 +469,20 @@ const PatientRegistration = () => {
       setFacilities(mockFacilities);
     }
     setLoading(false);
+  };
+
+  const handleSignatureEnd = () => {
+    if (sigCanvas.current) {
+      const signatureData = sigCanvas.current.toDataURL();
+      handleInputChange('patientSignature', signatureData);
+    }
+  };
+
+  const clearSignature = () => {
+    if (sigCanvas.current) {
+      sigCanvas.current.clear();
+      handleInputChange('patientSignature', null);
+    }
   };
 
   const nextStep = () => {
@@ -474,8 +541,8 @@ const PatientRegistration = () => {
   };
 
   const goToStep = (stepIndex: number) => {
-    // Only allow going to steps that have been completed or are the next step
-    if (stepIndex <= currentStep + 1) {
+    // Allow going to any step (0-10)
+    if (stepIndex >= 0 && stepIndex <= 10) {
       setCurrentStep(stepIndex);
       setInvalidFields(new Set());
       setShakingFields(new Set());
@@ -488,11 +555,13 @@ const PatientRegistration = () => {
       case 1: return ['idCardImage'];
       case 2: return ['extractedFirstName', 'extractedLastName', 'extractedDOB', 'extractedSex'];
       case 3: return ['email', 'cellPhone', 'phoneCountry', 'sex', 'ssn', 'dobMonth', 'dobDay', 'dobYear', 'dateOfBirth'];
-      case 4: return ['patientId', 'ssn'];
-      case 5: return ['email', 'cellPhone', 'emergencyContactName', 'emergencyContactPhone'];
-      case 6: return ['weight', 'height', 'painLevel'];
-      case 7: return ['isVeteran'];
-      case 8: return ['disabilityLetter'];
+      case 4: return ['selfie'];
+      case 5: return ['email', 'cellPhone', 'currentAddress', 'currentCity', 'currentState', 'currentZip', 'currentCountry', 'fmpAddress', 'fmpCity', 'fmpState', 'fmpZip', 'fmpCountry', 'emergencyContactName', 'emergencyContactPhone'];
+      case 6: return ['weight', 'heightFeet', 'heightInches', 'painLevel'];
+      case 7: return ['selectedInsurance'];
+      case 8: return ['isVeteran'];
+      case 9: return ['hasDisabilityLetter'];
+      case 10: return ['patientSignature', 'consentAccepted'];
       default: return [];
     }
   };
@@ -1101,7 +1170,7 @@ const PatientRegistration = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature *</label>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-emerald-500 transition-colors">
-                <Signature className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <FileSignature className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-2">Click to create your signature</p>
                 <button
                   type="button"
@@ -1117,6 +1186,94 @@ const PatientRegistration = () => {
       case 4:
         return (
           <div className="space-y-6">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Identity Verification</h3>
+            
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mr-4">
+                  <User className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-emerald-900">Take a Selfie</h4>
+                  <p className="text-sm text-emerald-700">Please take a clear selfie for identity verification</p>
+                </div>
+              </div>
+              
+              <div className="border-2 border-dashed border-emerald-300 rounded-lg p-8 text-center hover:border-emerald-400 transition-colors">
+                {!formData.selfie ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-center">
+                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <Camera className="w-8 h-8 text-emerald-600" />
+                      </div>
+                    </div>
+                    <div>
+                      <h5 className="text-lg font-semibold text-gray-900 mb-2">Upload Your Selfie</h5>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Take a clear photo of yourself for identity verification
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (e) => {
+                            handleInputChange('selfie', e.target?.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="selfie-upload"
+                    />
+                    <label
+                      htmlFor="selfie-upload"
+                      className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium cursor-pointer transition-colors duration-200"
+                    >
+                      <Camera className="w-5 h-5" />
+                      <span>Take Selfie</span>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="relative inline-block">
+                      <img
+                        src={formData.selfie}
+                        alt="Selfie"
+                        className="w-48 h-48 object-cover rounded-lg shadow-md mx-auto"
+                      />
+                      <button
+                        onClick={() => handleInputChange('selfie', null)}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors duration-200"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          handleInputChange('selfie', null);
+                        }}
+                        className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200"
+                      >
+                        <Camera className="w-5 h-5" />
+                        <span>Retake Selfie</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 5:
+        return (
+          <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Contact Information</h3>
             
             <div className="grid md:grid-cols-2 gap-6">
@@ -1126,9 +1283,7 @@ const PatientRegistration = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
-                    shakingFields.has('email') ? 'shake border-red-500' : ''
-                  }`}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                   required
                 />
               </div>
@@ -1138,11 +1293,133 @@ const PatientRegistration = () => {
                   type="tel"
                   value={formData.cellPhone}
                   onChange={(e) => handleInputChange('cellPhone', e.target.value)}
-                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
-                    shakingFields.has('cellPhone') ? 'shake border-red-500' : ''
-                  }`}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                   required
                 />
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Current Address</h4>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Street Address *</label>
+                  <input
+                    type="text"
+                    value={formData.currentAddress}
+                    onChange={(e) => handleInputChange('currentAddress', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter your current address"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                  <input
+                    type="text"
+                    value={formData.currentCity}
+                    onChange={(e) => handleInputChange('currentCity', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter city"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">State/Province *</label>
+                  <input
+                    type="text"
+                    value={formData.currentState}
+                    onChange={(e) => handleInputChange('currentState', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter state/province"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ZIP/Postal Code *</label>
+                  <input
+                    type="text"
+                    value={formData.currentZip}
+                    onChange={(e) => handleInputChange('currentZip', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter ZIP/postal code"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                  <input
+                    type="text"
+                    value={formData.currentCountry}
+                    onChange={(e) => handleInputChange('currentCountry', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter country"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Address Registered with FMP</h4>
+              <p className="text-sm text-gray-600 mb-4">Please provide the address you have registered with the Foreign Medical Program (FMP). This is usually a US address.</p>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP Street Address *</label>
+                  <input
+                    type="text"
+                    value={formData.fmpAddress}
+                    onChange={(e) => handleInputChange('fmpAddress', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter FMP registered address"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP City *</label>
+                  <input
+                    type="text"
+                    value={formData.fmpCity}
+                    onChange={(e) => handleInputChange('fmpCity', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter city"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP State *</label>
+                  <input
+                    type="text"
+                    value={formData.fmpState}
+                    onChange={(e) => handleInputChange('fmpState', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter state"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP ZIP Code *</label>
+                  <input
+                    type="text"
+                    value={formData.fmpZip}
+                    onChange={(e) => handleInputChange('fmpZip', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter ZIP code"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP Country *</label>
+                  <input
+                    type="text"
+                    value={formData.fmpCountry}
+                    onChange={(e) => handleInputChange('fmpCountry', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="Enter country (usually USA)"
+                    required
+                  />
+                </div>
               </div>
             </div>
 
@@ -1174,7 +1451,7 @@ const PatientRegistration = () => {
           </div>
         );
 
-      case 5:
+      case 6:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Medical Information</h3>
@@ -1185,69 +1462,238 @@ const PatientRegistration = () => {
                 <input
                   type="number"
                   value={formData.weight}
-                  onChange={(e) => handleInputChange('weight', e.target.value)}
+                  onChange={(e) => {
+                    // Only allow 3 digits, numbers only
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                    handleInputChange('weight', value);
+                  }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  placeholder="Enter weight (3 digits max)"
+                  maxLength={3}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Height (inches) *</label>
-                <input
-                  type="number"
-                  value={formData.height}
-                  onChange={(e) => handleInputChange('height', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Height *</label>
+                <div className="flex space-x-2">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-500 mb-1">Feet</label>
+                    <input
+                      type="number"
+                      value={formData.heightFeet}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 1);
+                        handleInputChange('heightFeet', value);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                      placeholder="5"
+                      maxLength={1}
+                      min="1"
+                      max="8"
+                      required
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-500 mb-1">Inches</label>
+                    <input
+                      type="number"
+                      value={formData.heightInches}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 2);
+                        handleInputChange('heightInches', value);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                      placeholder="1"
+                      maxLength={2}
+                      min="0"
+                      max="11"
+                      required
+                    />
+                  </div>
+                </div>
+                {formData.heightFeet && formData.heightInches && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    {formData.heightFeet} feet {formData.heightInches} inches
+                  </p>
+                )}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Overall Pain Level (1-9) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Overall Pain Level (0-9) *</label>
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-500">1 (No Pain)</span>
+                <span className="text-sm text-gray-500">0 (No Pain)</span>
                 <input
                   type="range"
-                  min="1"
+                  min="0"
                   max="9"
-                  value={formData.painLevel}
+                  value={formData.painLevel || '0'}
                   onChange={(e) => handleInputChange('painLevel', e.target.value)}
                   className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                 />
                 <span className="text-sm text-gray-500">9 (Severe Pain)</span>
-                <span className="text-lg font-semibold text-emerald-600 min-w-[2rem]">{formData.painLevel || '5'}</span>
+                <span className="text-lg font-semibold text-emerald-600 min-w-[2rem]">{formData.painLevel || '0'}</span>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Food or Drug Allergies</label>
-              <textarea
-                value={formData.allergies}
-                onChange={(e) => handleInputChange('allergies', e.target.value)}
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                placeholder="Please list any known allergies..."
-              />
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={formData.allergyInput}
+                  onChange={(e) => handleInputChange('allergyInput', e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (formData.allergyInput.trim()) {
+                        const newAllergies = [...(formData.allergies || []), formData.allergyInput.trim()];
+                        handleInputChange('allergies', newAllergies);
+                        handleInputChange('allergyInput', '');
+                      }
+                    }
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  placeholder="Type allergy and press Enter to add..."
+                />
+                
+                {/* Display allergies as tags */}
+                {formData.allergies && formData.allergies.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.allergies.map((allergy, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      >
+                        {allergy}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newAllergies = formData.allergies.filter((_, i) => i !== index);
+                            handleInputChange('allergies', newAllergies);
+                          }}
+                          className="ml-2 text-emerald-600 hover:text-emerald-800"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Current Medications</label>
-              <textarea
-                value={formData.medications}
-                onChange={(e) => handleInputChange('medications', e.target.value)}
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                placeholder="Please list all current medications..."
-              />
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={formData.medicationInput}
+                  onChange={(e) => handleInputChange('medicationInput', e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (formData.medicationInput.trim()) {
+                        const newMedications = [...(formData.medications || []), formData.medicationInput.trim()];
+                        handleInputChange('medications', newMedications);
+                        handleInputChange('medicationInput', '');
+                      }
+                    }
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  placeholder="Type medication and press Enter to add..."
+                />
+                
+                {/* Display medications as tags */}
+                {formData.medications && formData.medications.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.medications.map((medication, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200"
+                      >
+                        {medication}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newMedications = formData.medications.filter((_, i) => i !== index);
+                            handleInputChange('medications', newMedications);
+                          }}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
 
-      case 6:
+      case 7:
         return (
           <div className="space-y-6">
-            {/* <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Veteran Status</h3> */}
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Insurance Selection</h3>
             
+            <div className="text-center mb-6">
+              <p className="text-gray-600">Are you enrolled with any of the following insurances?</p>
+              <p className="text-sm text-gray-500">Please select one option only</p>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="inline-flex items-center space-x-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent"></div>
+                  <p className="text-gray-700 font-medium">Loading insurances...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {insurances.map((insurance) => (
+                  <label
+                    key={insurance.id}
+                    className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                      formData.selectedInsurance === insurance.id
+                        ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                        : 'border-gray-200 hover:border-emerald-300 hover:shadow-sm'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="insurance"
+                      value={insurance.id}
+                      checked={formData.selectedInsurance === insurance.id}
+                      onChange={(e) => handleInputChange('selectedInsurance', e.target.value)}
+                      className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 mr-4"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">{insurance.company}</div>
+                      <div className="text-sm text-gray-500">Code: {insurance.code}</div>
+                    </div>
+                    {formData.selectedInsurance === insurance.id && (
+                      <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </label>
+                ))}
+                
+                {insurances.length === 0 && !loading && (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No insurances available at the moment.</p>
+                    <p className="text-sm">Please contact support for assistance.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+
+      case 8:
+        return (
+          <div className="space-y-6">
             <div>
               <div className="text-center mb-8">
                 <h2 className="text-xl font-black text-gray-900 mb-2">Are you a Veteran? *</h2>
@@ -1340,38 +1786,164 @@ const PatientRegistration = () => {
           </div>
         );
 
-      case 7:
+      case 9:
         return (
           <div className="space-y-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Document Upload</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Disability Letter Upload</h3>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Disability Letter from FMP *</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-emerald-500 transition-colors">
-                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">Upload your disability letter</p>
-                <p className="text-sm text-gray-500">PDF, DOC, DOCX up to 10MB</p>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => handleInputChange('disabilityLetter', e.target.files?.[0])}
-                  className="hidden"
-                  id="disability-upload"
-                />
-                <label htmlFor="disability-upload" className="mt-4 inline-block bg-emerald-600 text-white px-6 py-2 rounded-lg cursor-pointer hover:bg-emerald-700 transition-colors">
-                  Choose File
+            <div className="text-center mb-8">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Do you have your disability letter handy? *</h4>
+              <div className="flex justify-center space-x-8">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="hasDisabilityLetter"
+                    checked={formData.hasDisabilityLetter === true}
+                    onChange={() => handleInputChange('hasDisabilityLetter', true)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-gray-700 text-lg font-medium">Yes</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="hasDisabilityLetter"
+                    checked={formData.hasDisabilityLetter === false}
+                    onChange={() => handleInputChange('hasDisabilityLetter', false)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-gray-700 text-lg font-medium">No</span>
                 </label>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <div className="flex items-center space-x-3">
-                <CheckCircle className="h-6 w-6 text-blue-600" />
-                <h4 className="text-lg font-semibold text-blue-900">Review & Submit</h4>
+            {/* Upload section - only show if user has the letter */}
+            {formData.hasDisabilityLetter === true && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Disability Letter from FMP *</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-emerald-500 transition-colors">
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-2">Upload your disability letter</p>
+                  <p className="text-sm text-gray-500">PDF format only</p>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleInputChange('disabilityLetter', e.target.files?.[0])}
+                    className="hidden"
+                    id="disability-upload"
+                  />
+                  <label htmlFor="disability-upload" className="mt-4 inline-block bg-emerald-600 text-white px-6 py-2 rounded-lg cursor-pointer hover:bg-emerald-700 transition-colors">
+                    Choose PDF File
+                  </label>
+                </div>
               </div>
-              <p className="text-blue-700 mt-2">
-                Please review all your information before submitting. Once submitted, our team will review your application and contact you within 24-48 hours.
-              </p>
+            )}
+
+            {/* Skip message - only show if user doesn't have the letter */}
+            {formData.hasDisabilityLetter === false && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                <div className="text-blue-600 mb-2">
+                  <svg className="w-8 h-8 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-blue-800 mb-2">No Problem!</h3>
+                <p className="text-blue-700">
+                  You can skip this step for now. You can provide your disability letter later when you have it available.
+                </p>
+              </div>
+            )}
+          </div>
+        );
+
+      case 10:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Patient Consent and Signature</h3>
+            
+            {/* Patient Consent Text */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Patient Consent</h4>
+              <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
+                <p>
+                  <strong>PATIENT CONSENT FOR TREATMENT</strong>
+                </p>
+                
+                <p>
+                  I voluntarily consent for and authorize as my medical provider, his/her assistants or designees (collectively called "the physicians") may deem necessary or advisable. This care may include, but is not limited to, routine diagnostics, radiology and laboratory procedures, administration of routine drugs, biologics and other therapeutics, and routine medical and nursing care. I authorize my physician(s) to perform other additional or extended services in emergency situations if it may be necessary or advisable in order to preserve my life or health. I understand that my (the patient) care is directed by my physician(s) and that other personnel render care and services to me (the patient) according to the physician(s) instructions.
+                </p>
+                
+                <p>
+                  I acknowledge that no guarantees or promises have been made to me with respect to results of such diagnostic procedure or treatment.
+                </p>
+                
+                <p>
+                  I am aware that I may stop treatment at any time.
+                </p>
+                
+                <p>
+                  I am aware that if I am paying for services "out of pocket," I am responsible for all balances due.
+                </p>
+                
+                <p>
+                  By signing below, I agree that I have been fully oriented to the treatment that is being provided to me. I have reviewed my rights and responsibilities as a client and I am aware of the grievance process and the discharge/termination policy of this agency.
+                </p>
+              </div>
+            </div>
+
+            {/* Signature Section */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-gray-900">Patient Signature</h4>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SIGNATURE *</label>
+                <div className="border-2 border-gray-300 rounded-lg bg-white">
+                  <SignatureCanvas
+                    ref={sigCanvas}
+                    canvasProps={{
+                      className: 'w-full h-32 border-0 rounded-lg'
+                    }}
+                    onEnd={handleSignatureEnd}
+                  />
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <button
+                    type="button"
+                    onClick={clearSignature}
+                    className="text-sm text-red-600 hover:text-red-800 font-medium"
+                  >
+                    Clear Signature
+                  </button>
+                  <p className="text-sm text-gray-600">
+                    <strong>Signed by:</strong> {formData.firstName} {formData.lastName}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  By selecting Accept and Submit below, I Agree that the signature will be the electronic representation of my signature for all purposes when I use them on documents - just the same as a pen-and-paper signature.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('consentAccepted', !formData.consentAccepted)}
+                  className="w-full bg-emerald-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
+                >
+                  {formData.consentAccepted ? 'Consent Accepted ✓' : 'Accept Consent'}
+                </button>
+                
+                {formData.consentAccepted && (
+                  <button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  >
+                    Submit Registration
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -1393,10 +1965,10 @@ const PatientRegistration = () => {
           </h1>
         </div>
 
-        {/* Progress Steps */}
+        {/* Progress Steps - Scrollable */}
         <div className="mb-8">
-          <div className="flex justify-center">
-            <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 overflow-x-auto scrollbar-hide px-4 sm:px-0">
+          <div className="w-full overflow-x-auto scrollbar-hide">
+            <div className="flex items-center space-x-4 sm:space-x-6 min-w-max px-4">
               {steps.map((step, index) => {
                 const Icon = step.icon;
                 const isActive = currentStep === step.id;
@@ -1407,24 +1979,24 @@ const PatientRegistration = () => {
                     <div className="flex flex-col items-center">
                       <div 
                         onClick={() => goToStep(step.id)}
-                        className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border transition-all duration-300 cursor-pointer hover:scale-105 ${
+                        className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-300 cursor-pointer hover:scale-105 ${
                           isActive 
-                            ? 'bg-emerald-600 border-emerald-600 text-white' 
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg' 
                             : isCompleted 
-                              ? 'bg-emerald-100 border-emerald-600 text-emerald-600 hover:bg-emerald-200' 
+                              ? 'bg-emerald-100 border-emerald-600 text-emerald-600 hover:bg-emerald-200 shadow-md' 
                               : currentStep >= step.id - 1
                                 ? 'bg-white border-gray-300 text-gray-400 hover:bg-gray-50 hover:border-gray-400'
                                 : 'bg-white border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                         }`}
                       >
                         {isCompleted ? (
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                          <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6" />
                         ) : (
-                          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                          <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                         )}
                       </div>
-                      <div className="mt-1 text-center">
-                        <p className={`text-xs font-medium whitespace-nowrap ${
+                      <div className="mt-2 text-center">
+                        <p className={`text-xs sm:text-sm font-medium whitespace-nowrap ${
                           isActive ? 'text-emerald-600' : isCompleted ? 'text-emerald-600' : 'text-gray-500'
                         }`}>
                           {step.title}
@@ -1432,7 +2004,7 @@ const PatientRegistration = () => {
                       </div>
                     </div>
                     {index < steps.length - 1 && (
-                      <div className={`hidden sm:block w-4 lg:w-8 h-px mx-1 lg:mx-2 ${
+                      <div className={`w-6 sm:w-8 h-px mx-2 ${
                         isCompleted ? 'bg-emerald-600' : 'bg-gray-300'
                       }`} />
                     )}
@@ -1449,7 +2021,8 @@ const PatientRegistration = () => {
             {renderStepContent()}
             
             {/* Navigation Buttons */}
-            <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
+            {currentStep !== 10 && (
+              <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
               <button
                 type="button"
                 onClick={prevStep}
@@ -1482,7 +2055,8 @@ const PatientRegistration = () => {
                   <CheckCircle className="h-5 w-5" />
                 </button>
               )}
-            </div>
+              </div>
+            )}
           </form>
         </div>
       </div>
