@@ -56,7 +56,7 @@ const PatientRegistration = () => {
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeField, setActiveField] = useState<string | null>(null);
-  const [detectedCountry, setDetectedCountry] = useState('CO');
+  const [detectedCountry, setDetectedCountry] = useState('DO');
   const [formData, setFormData] = useState({
     // Office Selection
     selectedOffice: '',
@@ -64,6 +64,7 @@ const PatientRegistration = () => {
     
     // Personal Information
     firstName: '',
+    middleName: '',
     lastName: '',
     dateOfBirth: '',
     sex: '',
@@ -73,11 +74,13 @@ const PatientRegistration = () => {
     
     // Address Information
     currentAddress: '',
+    currentAptUnit: '',
     currentCity: '',
     currentState: '',
     currentZip: '',
     currentCountry: '',
     fmpAddress: '',
+    fmpAptUnit: '',
     fmpCity: '',
     fmpState: '',
     fmpZip: '',
@@ -89,6 +92,7 @@ const PatientRegistration = () => {
     extractedLastName: '',
     extractedDOB: '',
     extractedSex: '',
+    idNumber: '',
     
     // Identity Verification
     patientId: '',
@@ -108,6 +112,7 @@ const PatientRegistration = () => {
     heightFeet: '',
     heightInches: '',
     painLevel: '0',
+    allergies: '',
     medications: [],
     medicationInput: '',
     
@@ -512,6 +517,7 @@ const PatientRegistration = () => {
           handleInputChange('extractedLastName', result.lastName || '');
           handleInputChange('extractedDOB', result.dob || '');
           handleInputChange('extractedSex', result.sex || '');
+          handleInputChange('idNumber', result.idNumber || '');
           showToast('ID card processed successfully!', 'success');
           
           // Auto-advance to next step after successful extraction
@@ -532,23 +538,8 @@ const PatientRegistration = () => {
 
   // Function to detect country from domain
   const detectCountryFromDomain = () => {
-    if (typeof window === 'undefined') return 'CO'; // Default for SSR
-    
-    const hostname = window.location.hostname;
-    
-    // Production domain mapping
-    if (hostname === 'purple.orkachart.com') return 'CO';
-    if (hostname === 'holistic.orkachart.com') return 'DO';
-    
-    // Development URL parameter support
-    const urlParams = new URLSearchParams(window.location.search);
-    const countryParam = urlParams.get('country');
-    if (countryParam === 'CO' || countryParam === 'DO') {
-      return countryParam;
-    }
-    
-    // Default fallback for development
-    return 'CO';
+    // Always return Dominican Republic for this deployment
+    return 'DO';
   };
 
 
@@ -737,7 +728,7 @@ const PatientRegistration = () => {
       case 0: return ['selectedOffice', 'agreeToTerms'];
       case 1: return formData.isVeteran === true ? ['isVeteran', 'branchOfService'] : ['isVeteran'];
       case 2: return ['idCardImage'];
-      case 3: return ['extractedFirstName', 'extractedLastName', 'extractedDOB', 'extractedSex'];
+      case 3: return ['extractedFirstName', 'extractedLastName', 'extractedDOB', 'extractedSex', 'idNumber'];
       case 4: return ['email', 'cellPhone', 'phoneCountry', 'sex', 'ssn', 'dobMonth', 'dobDay', 'dobYear', 'dateOfBirth'];
       case 5: return ['selfie'];
       case 6: return ['currentAddress', 'currentCity', 'currentState', 'currentZip', 'currentCountry', 'fmpAddress', 'fmpCity', 'fmpState', 'fmpZip', 'fmpCountry'];
@@ -781,151 +772,77 @@ const PatientRegistration = () => {
       return;
     }
     
+    // Create JSON structure matching client's exact format
+    const comprehensiveFormData = {
+      "id_facility": formData.selectedOffice,
+      "id_insurance_company_country": formData.selectedInsurance,
+      "other_insurance_company": "",
+      "no_insurance": formData.selectedInsurance ? "false" : "true",
+      "first_name": formData.firstName || formData.extractedFirstName,
+      "middle_name": formData.middleName,
+      "last_name": formData.lastName || formData.extractedLastName,
+      "gender": formData.sex === 'M' ? "Male" : formData.sex === 'F' ? "Female" : formData.extractedSex,
+      "address": formData.currentAddress,
+      "apt_unit": formData.currentAptUnit,
+      "city": formData.currentCity,
+      "state": formData.currentState,
+      "zip_code": formData.currentZip,
+      "address_fmp": formData.fmpAddress,
+      "apt_unit_fmp": formData.fmpAptUnit,
+      "city_fmp": formData.fmpCity,
+      "state_fmp": formData.fmpState,
+      "zip_code_fmp": formData.fmpZip,
+      "phone_number": formData.cellPhone,
+      "email": formData.email,
+      "ssn": formData.ssn,
+      "dob": formData.dateOfBirth || formData.extractedDOB,
+      "photo": formData.selfie || "",
+      "patient_signature": formData.patientSignature,
+      "va_letter": formData.disabilityLetter || "",
+      "photo_id": formData.idCardImage || "",
+      "ID_name": formData.extractedFirstName,
+      "ID_last_name": formData.extractedLastName,
+      "ID_dob": formData.extractedDOB,
+      "ID_number": formData.idNumber,
+      "weight": formData.weight,
+      "height_feet": formData.heightFeet,
+      "height_inches": formData.heightInches,
+      "food_drug_allergies": formData.allergies,
+      "pain_level": formData.painLevel,
+      "current_medications": formData.medications || [],
+      "emergency_contact_name": formData.emergencyContactName,
+      "emergency_contact_phone": formData.emergencyContactPhone
+    };
+    
     try {
-      // Submit to our server-side API - COMMENTED OUT FOR NOW
-      /*
+      // Show loading state
+      setIsProcessingID(true);
+      
+      // Submit to our server-side API
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(comprehensiveFormData),
       });
 
       const result = await response.json();
       
       if (result.status === 'success') {
         console.log('Registration successful:', result);
-        alert('Registration submitted successfully!');
+        // Show success message
+        setToast({ message: 'Registration submitted successfully! Thank you for your submission.', type: 'success' });
       } else {
         console.error('Registration failed:', result);
-        alert('Registration failed. Please try again.');
+        setToast({ message: 'Registration failed. Please try again.', type: 'error' });
       }
-      */
-      
-      // Temporary success message for testing
-      console.log('Form validation passed - API call commented out');
-      alert('Form validation passed! (API call is commented out)');
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('Error submitting form. Please try again.');
+      setToast({ message: 'Error submitting form. Please try again.', type: 'error' });
+    } finally {
+      setIsProcessingID(false);
     }
-    
-    // Create comprehensive JSON structure for backend
-    const comprehensiveFormData = {
-      // Registration Metadata
-      registration: {
-        timestamp: new Date().toISOString(),
-        step: currentStep,
-        completed: true
-      },
-      
-      // Office Selection
-      office: {
-        selectedOffice: formData.selectedOffice,
-        agreeToTerms: formData.agreeToTerms
-      },
-      
-      // Personal Information
-      personalInfo: {
-        firstName: formData.firstName || formData.extractedFirstName,
-        lastName: formData.lastName || formData.extractedLastName,
-        dateOfBirth: formData.dateOfBirth || formData.extractedDOB,
-        sex: formData.sex || formData.extractedSex,
-        dobComponents: {
-          month: formData.dobMonth,
-          day: formData.dobDay,
-          year: formData.dobYear
-        }
-      },
-      
-      // Address Information
-      addresses: {
-        current: {
-          address: formData.currentAddress,
-          city: formData.currentCity,
-          state: formData.currentState,
-          zip: formData.currentZip,
-          country: formData.currentCountry
-        },
-        fmp: {
-          address: formData.fmpAddress,
-          city: formData.fmpCity,
-          state: formData.fmpState,
-          zip: formData.fmpZip,
-          country: formData.fmpCountry
-        }
-      },
-      
-      // Identity Verification
-      identity: {
-        patientId: formData.patientId,
-        ssn: formData.ssn,
-        idCardUploaded: !!formData.idCardImage,
-        selfieUploaded: !!formData.selfie,
-        extractedData: {
-          firstName: formData.extractedFirstName,
-          lastName: formData.extractedLastName,
-          dateOfBirth: formData.extractedDOB,
-          sex: formData.extractedSex
-        }
-      },
-      
-      // Contact Information
-      contact: {
-        email: formData.email,
-        cellPhone: formData.cellPhone,
-        phoneCountry: formData.phoneCountry,
-        emergencyContact: {
-          name: formData.emergencyContactName,
-          phone: formData.emergencyContactPhone
-        }
-      },
-      
-      // Medical Information
-      medical: {
-        physical: {
-          weight: formData.weight,
-          height: {
-            feet: formData.heightFeet,
-            inches: formData.heightInches
-          },
-          painLevel: formData.painLevel
-        },
-        medications: formData.medications
-      },
-      
-      // Insurance Information
-      insurance: {
-        selectedInsurance: formData.selectedInsurance
-      },
-      
-      // Veteran Status
-      veteran: {
-        isVeteran: formData.isVeteran,
-        branchOfService: formData.branchOfService
-      },
-      
-      // Documentation
-      documentation: {
-        hasDisabilityLetter: formData.hasDisabilityLetter,
-        disabilityLetterUploaded: !!formData.disabilityLetter
-      },
-      
-      // Consent and Signature
-      consent: {
-        patientSignature: formData.patientSignature,
-        consentAccepted: formData.consentAccepted,
-        signatureTimestamp: formData.patientSignature ? new Date().toISOString() : null
-      },
-      
-      // File Attachments (Base64 encoded)
-      attachments: {
-        idCard: formData.idCardImage,
-        selfie: formData.selfie,
-        disabilityLetter: formData.disabilityLetter
-      }
-    };
     
     // Output clean submitted data
     console.log('SUBMITTED DATA:', JSON.stringify(comprehensiveFormData, null, 2));
@@ -947,29 +864,6 @@ const PatientRegistration = () => {
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Select Your Office</h4>
               <p className="text-gray-600 mb-6">Click on an office to select it</p>
               
-              {/* Development Country Selector */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800 mb-2">Development Mode - Country Selector:</p>
-                  <div className="flex justify-center space-x-4">
-                    <button
-                      onClick={() => window.location.href = `${window.location.pathname}?country=CO`}
-                      className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                    >
-                      Colombia (CO)
-                    </button>
-                    <button
-                      onClick={() => window.location.href = `${window.location.pathname}?country=DO`}
-                      className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                    >
-                      Dominican Republic (DO)
-                    </button>
-                  </div>
-                  <p className="text-xs text-yellow-700 mt-2">
-                    Current: {detectedCountry}
-                  </p>
-                </div>
-              )}
             </div>
 
             {loading ? (
@@ -1326,6 +1220,20 @@ const PatientRegistration = () => {
                     <option value="Female">Female</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ID Number *</label>
+                  <input
+                    type="text"
+                    name="idNumber"
+                    value={formData.idNumber}
+                    onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+                      shakingFields.has('idNumber') ? 'shake border-red-500' : ''
+                    }`}
+                    placeholder="Enter ID number from your card"
+                    required
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1417,6 +1325,22 @@ const PatientRegistration = () => {
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    Middle Name
+                    <AnimatedCheckmark fieldName="middleName" />
+                  </label>
+                  <input
+                    type="text"
+                    name="middleName"
+                    value={formData.middleName}
+                    onChange={(e) => handleInputChange('middleName', e.target.value)}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('middleName') ? 'shake border-red-500' : ''
+                    }`}
+                    placeholder="Middle Name (Optional)"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     Sex *
@@ -1657,17 +1581,17 @@ const PatientRegistration = () => {
 
             <div className="border-t pt-6">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                Local Address in {detectedCountry === 'CO' ? 'Colombia' : detectedCountry === 'DO' ? 'Dominican Republic' : 'Your Country'}
+                Local Address in Dominican Republic
               </h4>
               <p className="text-sm text-gray-600 mb-4">Please provide your current local address where you are currently residing.</p>
-              <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                     Street Address *
                     <AnimatedCheckmark fieldName="currentAddress" />
-                  </label>
+                </label>
                   <div className="relative">
-                    <input
+                <input
                       type="text"
                       name="currentAddress"
                       value={formData.currentAddress}
@@ -1683,12 +1607,12 @@ const PatientRegistration = () => {
                       onBlur={() => {
                         setTimeout(() => setShowSuggestions(false), 200);
                       }}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
                         shakingFields.has('currentAddress') ? 'shake border-red-500' : ''
-                      }`}
+                  }`}
                       placeholder="Start typing your address..."
-                      required
-                    />
+                  required
+                />
                     
                     {/* Address suggestions dropdown */}
                     {showSuggestions && activeField === 'currentAddress' && addressSuggestions.length > 0 && (
@@ -1702,11 +1626,27 @@ const PatientRegistration = () => {
                           >
                             <div className="font-medium text-gray-900">{suggestion.structured_formatting.main_text}</div>
                             <div className="text-sm text-gray-600">{suggestion.structured_formatting.secondary_text}</div>
-                          </div>
+              </div>
                         ))}
-                      </div>
+              </div>
                     )}
-                  </div>
+            </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Apartment/Unit
+                    <AnimatedCheckmark fieldName="currentAptUnit" />
+                  </label>
+                  <input
+                    type="text"
+                    name="currentAptUnit"
+                    value={formData.currentAptUnit}
+                    onChange={(e) => handleInputChange('currentAptUnit', e.target.value)}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('currentAptUnit') ? 'shake border-red-500' : ''
+                    }`}
+                    placeholder="Apt, Unit, Suite (Optional)"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1790,10 +1730,10 @@ const PatientRegistration = () => {
                     <AnimatedCheckmark fieldName="fmpAddress" />
                   </label>
                   <div className="relative">
-                    <input
-                      type="text"
-                      name="fmpAddress"
-                      value={formData.fmpAddress}
+                  <input
+                    type="text"
+                    name="fmpAddress"
+                    value={formData.fmpAddress}
                       onChange={(e) => {
                         handleInputChange('fmpAddress', e.target.value);
                         fetchAddressSuggestions(e.target.value, 'fmpAddress');
@@ -1806,11 +1746,11 @@ const PatientRegistration = () => {
                       onBlur={() => {
                         setTimeout(() => setShowSuggestions(false), 200);
                       }}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
-                        shakingFields.has('fmpAddress') ? 'shake border-red-500' : ''
-                      }`}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('fmpAddress') ? 'shake border-red-500' : ''
+                    }`}
                       placeholder="Start typing your FMP address..."
-                      required
+                    required
                     />
                     
                     {/* Address suggestions dropdown */}
@@ -1830,6 +1770,22 @@ const PatientRegistration = () => {
                       </div>
                     )}
                   </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    FMP Apartment/Unit
+                    <AnimatedCheckmark fieldName="fmpAptUnit" />
+                  </label>
+                  <input
+                    type="text"
+                    name="fmpAptUnit"
+                    value={formData.fmpAptUnit}
+                    onChange={(e) => handleInputChange('fmpAptUnit', e.target.value)}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('fmpAptUnit') ? 'shake border-red-500' : ''
+                    }`}
+                    placeholder="Apt, Unit, Suite (Optional)"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1945,6 +1901,101 @@ const PatientRegistration = () => {
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Medical Information</h3>
             
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Weight (lbs)
+                  <AnimatedCheckmark fieldName="weight" />
+                </label>
+                <input
+                  type="number"
+                  name="weight"
+                  value={formData.weight}
+                  onChange={(e) => handleInputChange('weight', e.target.value)}
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                    shakingFields.has('weight') ? 'shake border-red-500' : ''
+                  }`}
+                  placeholder="Enter weight in pounds"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Height
+                  <AnimatedCheckmark fieldName="heightFeet" />
+                </label>
+                <div className="flex gap-2">
+                    <input
+                      type="number"
+                      name="heightFeet"
+                      value={formData.heightFeet}
+                    onChange={(e) => handleInputChange('heightFeet', e.target.value)}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                        shakingFields.has('heightFeet') ? 'shake border-red-500' : ''
+                      }`}
+                    placeholder="Feet"
+                    min="0"
+                      max="8"
+                    />
+                    <input
+                      type="number"
+                      name="heightInches"
+                      value={formData.heightInches}
+                    onChange={(e) => handleInputChange('heightInches', e.target.value)}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                        shakingFields.has('heightInches') ? 'shake border-red-500' : ''
+                      }`}
+                    placeholder="Inches"
+                      min="0"
+                      max="11"
+                    />
+                  </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pain Level (1-10)
+                <AnimatedCheckmark fieldName="painLevel" />
+              </label>
+              <select
+                  name="painLevel"
+                value={formData.painLevel}
+                  onChange={(e) => handleInputChange('painLevel', e.target.value)}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                  shakingFields.has('painLevel') ? 'shake border-red-500' : ''
+                }`}
+              >
+                <option value="0">No Pain (0)</option>
+                <option value="1">1 - Very Mild</option>
+                <option value="2">2 - Mild</option>
+                <option value="3">3 - Mild</option>
+                <option value="4">4 - Moderate</option>
+                <option value="5">5 - Moderate</option>
+                <option value="6">6 - Moderate to Severe</option>
+                <option value="7">7 - Severe</option>
+                <option value="8">8 - Very Severe</option>
+                <option value="9">9 - Very Severe</option>
+                <option value="10">10 - Unbearable</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Food/Drug Allergies
+                <AnimatedCheckmark fieldName="allergies" />
+              </label>
+                <input
+                  type="text"
+                name="allergies"
+                value={formData.allergies}
+                onChange={(e) => handleInputChange('allergies', e.target.value)}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                  shakingFields.has('allergies') ? 'shake border-red-500' : ''
+                }`}
+                placeholder="e.g., fish, penicillin, nuts (Optional)"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Current Medications *
@@ -1952,20 +2003,20 @@ const PatientRegistration = () => {
               </label>
               <div className="space-y-3">
                 <div className={`flex gap-2 ${shakingFields.has('medications') ? 'shake' : ''}`}>
-                  <input
-                    type="text"
-                    value={formData.medicationInput}
-                    onChange={(e) => handleInputChange('medicationInput', e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (formData.medicationInput.trim()) {
-                          const newMedications = [...(formData.medications || []), formData.medicationInput.trim()];
-                          handleInputChange('medications', newMedications);
-                          handleInputChange('medicationInput', '');
-                        }
+                <input
+                  type="text"
+                  value={formData.medicationInput}
+                  onChange={(e) => handleInputChange('medicationInput', e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (formData.medicationInput.trim()) {
+                        const newMedications = [...(formData.medications || []), formData.medicationInput.trim()];
+                        handleInputChange('medications', newMedications);
+                        handleInputChange('medicationInput', '');
                       }
-                    }}
+                    }
+                  }}
                     className={`flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
                       shakingFields.has('medications') ? 'border-red-500' : ''
                     }`}
@@ -2090,7 +2141,7 @@ const PatientRegistration = () => {
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Disability Letter Upload</h3>
             
-              <div className="text-center mb-8">
+            <div className="text-center mb-8">
               <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-center">
                 Do you have your disability letter handy? *
                 <AnimatedCheckmark fieldName="hasDisabilityLetter" />
@@ -2157,8 +2208,8 @@ const PatientRegistration = () => {
                       </div>
                       <div>
                         <label className="cursor-pointer">
-                          <input
-                            type="file"
+                  <input
+                    type="file"
                             accept="image/*"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
@@ -2170,18 +2221,18 @@ const PatientRegistration = () => {
                                 reader.readAsDataURL(file);
                               }
                             }}
-                            className="hidden"
+                    className="hidden"
                           />
                           <span className="inline-flex items-center px-4 py-2 border border-emerald-300 rounded-md shadow-sm text-sm font-medium text-emerald-700 bg-white hover:bg-emerald-50">
                             <Upload className="w-4 h-4 mr-2" />
                             Choose File
                           </span>
-                        </label>
-                      </div>
-                      <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
-                    </div>
-                  )}
+                  </label>
                 </div>
+                      <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
+                  </div>
+                )}
+              </div>
               </div>
             )}
 
@@ -2406,10 +2457,24 @@ const PatientRegistration = () => {
               ) : (
                 <button
                   type="submit"
-                  className="flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 sm:px-8 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto"
+                  disabled={isProcessingID}
+                  className={`flex items-center justify-center space-x-2 px-4 sm:px-8 py-3 rounded-lg font-semibold transition-all duration-300 transform shadow-lg w-full sm:w-auto ${
+                    isProcessingID 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 hover:scale-105'
+                  } text-white`}
                 >
-                  <span>Submit Registration</span>
-                  <CheckCircle className="h-5 w-5" />
+                  {isProcessingID ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Submit Registration</span>
+                      <CheckCircle className="h-5 w-5" />
+                    </>
+                  )}
                 </button>
               )}
             </div>

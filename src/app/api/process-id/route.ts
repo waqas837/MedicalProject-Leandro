@@ -110,13 +110,15 @@ export async function POST(request: NextRequest) {
                 "firstName": "string",
                 "lastName": "string", 
                 "dob": "YYYY-MM-DD",
-                "sex": "Male" or "Female"
+                "sex": "Male" or "Female",
+                "idNumber": "string"
               }
               
               Instructions:
               - Extract the full name (first and last name separately)
               - Extract date of birth in YYYY-MM-DD format
               - Extract sex/gender (Male or Female)
+              - Extract the ID number/document number (license number, passport number, etc.)
               - If any information is not clearly visible or readable, return "N/A" for that field
               - If this is not a valid ID card (driver's license, passport, state ID), return error: "Not an ID card"
               - Focus on the main text areas and ignore any watermarks or background elements
@@ -169,7 +171,8 @@ export async function POST(request: NextRequest) {
         firstName: extractedData.firstName || null,
         lastName: extractedData.lastName || null,
         dob: extractedData.dob || null,
-        sex: extractedData.sex || null
+        sex: extractedData.sex || null,
+        idNumber: extractedData.idNumber || null
       };
 
       return NextResponse.json(result);
@@ -183,12 +186,14 @@ export async function POST(request: NextRequest) {
       const lastNameMatch = content.match(/"lastName":\s*"([^"]+)"/);
       const dobMatch = content.match(/"dob":\s*"([^"]+)"/);
       const sexMatch = content.match(/"sex":\s*"([^"]+)"/);
+      const idNumberMatch = content.match(/"idNumber":\s*"([^"]+)"/);
 
       const result = {
         firstName: firstNameMatch ? firstNameMatch[1] : null,
         lastName: lastNameMatch ? lastNameMatch[1] : null,
         dob: dobMatch ? dobMatch[1] : null,
-        sex: sexMatch ? sexMatch[1] : null
+        sex: sexMatch ? sexMatch[1] : null,
+        idNumber: idNumberMatch ? idNumberMatch[1] : null
       };
 
       return NextResponse.json(result);

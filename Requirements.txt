@@ -45,7 +45,7 @@ purple.orkachart.com
 country=CO
 
 holistic.orkachart.com
-country=DR
+country=DO
 
 
 The branches, are these ones:
