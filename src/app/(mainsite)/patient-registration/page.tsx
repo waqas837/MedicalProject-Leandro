@@ -123,7 +123,7 @@ const PatientRegistration = () => {
     disabilityLetter: null,
     
     // Consent and Signature
-    patientSignature: null,
+    patientSignature: '',
     consentAccepted: false
   });
 
@@ -663,7 +663,7 @@ const PatientRegistration = () => {
   const clearSignature = () => {
     if (sigCanvas.current) {
       sigCanvas.current.clear();
-      handleInputChange('patientSignature', null);
+      handleInputChange('patientSignature', '');
     }
   };
 
@@ -758,7 +758,7 @@ const PatientRegistration = () => {
     e.preventDefault();
     
     // Validate signature and consent before submission
-    if (!formData.patientSignature || formData.patientSignature.length === 0) {
+    if (!formData.patientSignature || formData.patientSignature.trim().length === 0) {
       setInvalidFields(prev => new Set([...prev, 'patientSignature']));
       setShakingFields(prev => new Set([...prev, 'patientSignature']));
       setTimeout(() => setShakingFields(prev => {
@@ -891,7 +891,6 @@ const PatientRegistration = () => {
           },
           painLevel: formData.painLevel
         },
-        allergies: formData.allergies,
         medications: formData.medications
       },
       
