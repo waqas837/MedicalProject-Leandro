@@ -378,6 +378,10 @@ const PatientRegistration = () => {
   };
 
   const handleAddressSelect = async (placeId: string, field: string) => {
+    // Immediately hide suggestions to prevent blur interference
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+    
     try {
       const response = await fetch(`/api/places/details?place_id=${placeId}`);
       const data = await response.json();
@@ -418,9 +422,6 @@ const PatientRegistration = () => {
           }));
         }
       }
-      
-      setShowSuggestions(false);
-      setAddressSuggestions([]);
     } catch (error) {
       console.error('Error fetching place details:', error);
     }
@@ -1696,6 +1697,7 @@ const PatientRegistration = () => {
                           <div
                             key={index}
                             onClick={() => handleAddressSelect(suggestion.place_id, 'currentAddress')}
+                            onMouseDown={(e) => e.preventDefault()}
                             className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                           >
                             <div className="font-medium text-gray-900">{suggestion.structured_formatting.main_text}</div>
@@ -1818,6 +1820,7 @@ const PatientRegistration = () => {
                           <div
                             key={index}
                             onClick={() => handleAddressSelect(suggestion.place_id, 'fmpAddress')}
+                            onMouseDown={(e) => e.preventDefault()}
                             className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                           >
                             <div className="font-medium text-gray-900">{suggestion.structured_formatting.main_text}</div>
