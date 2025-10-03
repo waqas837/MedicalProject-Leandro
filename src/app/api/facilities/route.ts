@@ -16,8 +16,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Fetch all facilities from the API
-    const response = await fetch(`${BASE_URL}/list-facilities`, {
+    // Determine country code - use parameter or default to CO
+    const countryCode = country || 'CO';
+    
+    // Fetch facilities from the API with country filtering
+    const response = await fetch(`${BASE_URL}/list-facilities/${countryCode}`, {
       headers: {
         'X-API-Key': API_KEY,
         'Accept': 'application/json'

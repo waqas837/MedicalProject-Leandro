@@ -51,6 +51,12 @@ const PatientRegistration = () => {
   const [shakingFields, setShakingFields] = useState<Set<string>>(new Set());
   const [isProcessingID, setIsProcessingID] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+  
+  // Google Places autocomplete state
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeField, setActiveField] = useState<string | null>(null);
+  const [detectedCountry, setDetectedCountry] = useState('CO');
   const [formData, setFormData] = useState({
     // Office Selection
     selectedOffice: '',
@@ -93,7 +99,7 @@ const PatientRegistration = () => {
     // Contact Details
     email: '',
     cellPhone: '',
-    phoneCountry: 'US',
+    phoneCountry: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
     
@@ -102,8 +108,6 @@ const PatientRegistration = () => {
     heightFeet: '',
     heightInches: '',
     painLevel: '0',
-    allergies: [],
-    allergyInput: '',
     medications: [],
     medicationInput: '',
     
@@ -111,7 +115,7 @@ const PatientRegistration = () => {
     selectedInsurance: '',
     
     // Veteran Status
-    isVeteran: false,
+    isVeteran: null,
     branchOfService: '',
     
     // Documentation
@@ -124,9 +128,42 @@ const PatientRegistration = () => {
   });
 
   useEffect(() => {
+    // Set detected country on client side to avoid hydration mismatch
+    setDetectedCountry(detectCountryFromDomain());
+  }, []);
+
+  useEffect(() => {
+    // Fetch data after country is detected
+    if (detectedCountry) {
     fetchAllFacilities();
     fetchInsurances();
-  }, []);
+    }
+  }, [detectedCountry]);
+
+  // Auto-populate DOB and Sex from extracted data
+  useEffect(() => {
+    if (formData.extractedDOB && !formData.dobMonth && !formData.dobDay && !formData.dobYear) {
+      const dob = new Date(formData.extractedDOB);
+      if (!isNaN(dob.getTime())) {
+        setFormData(prev => ({
+          ...prev,
+          dobMonth: (dob.getMonth() + 1).toString(),
+          dobDay: dob.getDate().toString(),
+          dobYear: dob.getFullYear().toString()
+        }));
+      }
+    }
+    
+    if (formData.extractedSex && !formData.sex) {
+      const sexValue = formData.extractedSex === 'Male' ? 'M' : formData.extractedSex === 'Female' ? 'F' : '';
+      if (sexValue) {
+        setFormData(prev => ({
+          ...prev,
+          sex: sexValue
+        }));
+      }
+    }
+  }, [formData.extractedDOB, formData.extractedSex]);
 
   // Validate DOB for 18+ requirement
   useEffect(() => {
@@ -154,14 +191,14 @@ const PatientRegistration = () => {
 
   const steps = [
     { id: 0, title: 'Office', icon: Building2 },
-    { id: 1, title: 'ID Card', icon: Shield },
-    { id: 2, title: 'Review Data', icon: CheckCircle },
-    { id: 3, title: 'Personal Info', icon: User },
-    { id: 4, title: 'Identity', icon: User },
-    { id: 5, title: 'Contact', icon: Phone },
-    { id: 6, title: 'Medical', icon: Heart },
-    { id: 7, title: 'Insurance', icon: Shield },
-    { id: 8, title: 'Veteran', icon: Star },
+    { id: 1, title: 'Veteran', icon: Star },
+    { id: 2, title: 'ID Card', icon: Shield },
+    { id: 3, title: 'Review Data', icon: CheckCircle },
+    { id: 4, title: 'Personal Info', icon: User },
+    { id: 5, title: 'Identity', icon: User },
+    { id: 6, title: 'Contact', icon: Phone },
+    { id: 7, title: 'Medical', icon: Heart },
+    { id: 8, title: 'Insurance', icon: Shield },
     { id: 9, title: 'Documents', icon: FileText },
     { id: 10, title: 'Consent', icon: FileSignature }
   ];
@@ -177,16 +214,12 @@ const PatientRegistration = () => {
       case 'email':
         return value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
       case 'cellPhone':
-        // Remove all non-numeric characters and check length based on country
+        // Remove all non-numeric characters and check length
         const phoneDigits = value.replace(/\D/g, '');
-        if (formData.phoneCountry === 'US') {
-          return phoneDigits && phoneDigits.length === 10;
-        } else if (formData.phoneCountry === 'CO') {
-          return phoneDigits && phoneDigits.length === 10;
-        }
-        return phoneDigits && phoneDigits.length >= 10;
+        // Accept phone numbers with exactly 10-15 digits (specific length)
+        return phoneDigits && phoneDigits.length >= 10 && phoneDigits.length <= 15;
       case 'phoneCountry':
-        return value && (value === 'US' || value === 'CO');
+        return value && value.length > 0 && (value === 'US' || value === 'CO');
       case 'ssn':
         return value && /^\d{9}$/.test(value);
       case 'weight':
@@ -231,6 +264,62 @@ const PatientRegistration = () => {
         return value && parseInt(value) >= 1 && parseInt(value) <= 31;
       case 'dobYear':
         return value && parseInt(value) >= 1900 && parseInt(value) <= new Date().getFullYear();
+      // Step 2 - Extracted data validation
+      case 'extractedFirstName':
+      case 'extractedLastName':
+        return value && value.length >= 2;
+      case 'extractedDOB':
+        return value && value.length > 0;
+      case 'extractedSex':
+        return value && (value === 'Male' || value === 'Female');
+      // Step 5 - Address fields validation
+      case 'currentCity':
+      case 'currentState':
+      case 'fmpCity':
+      case 'fmpState':
+        return value && value.length >= 2;
+      case 'currentZip':
+      case 'fmpZip':
+        return value && value.length >= 3; // More flexible ZIP/postal code validation
+      case 'currentCountry':
+      case 'fmpCountry':
+        return value && value.length > 0;
+      // Step 6 - Height validation
+      case 'heightFeet':
+        return value && parseInt(value) >= 3 && parseInt(value) <= 8;
+      case 'heightInches':
+        return value && parseInt(value) >= 0 && parseInt(value) <= 11;
+      case 'height':
+        // Combined height validation (feet + inches)
+        const feet = parseInt(formData.heightFeet) || 0;
+        const inches = parseInt(formData.heightInches) || 0;
+        // Simple validation: if both fields have values, it's valid
+        return feet > 0 && inches >= 0;
+      // Step 7 - Insurance validation
+      case 'selectedInsurance':
+        return value && value.length > 0;
+      // Step 8 - Veteran validation
+      case 'isVeteran':
+        return value === true || value === false;
+      case 'branchOfService':
+        return value && value.length > 0;
+      // Step 9 - Disability letter validation
+      case 'hasDisabilityLetter':
+        return value === true || value === false;
+      // Step 7 - Medications validation
+      case 'medications':
+        return value && Array.isArray(value) && value.length > 0;
+      case 'disabilityLetter':
+        // Only validate if user said they have the letter
+        if (formData.hasDisabilityLetter === true) {
+          return value && value !== null;
+        }
+        return true; // Not required if user doesn't have the letter
+      // Step 10 - Signature and consent validation
+      case 'patientSignature':
+        return value && value.length > 0;
+      case 'consentAccepted':
+        return value === true;
       default:
         return value && value.length > 0;
     }
@@ -263,6 +352,77 @@ const PatientRegistration = () => {
           return newSet;
         });
       }, 800);
+    }
+  };
+
+  // Google Places autocomplete functions
+  const fetchAddressSuggestions = async (input: string, field: string) => {
+    if (input.length < 3) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(input)}&country=US`);
+      const data = await response.json();
+      
+      if (data.predictions) {
+        setAddressSuggestions(data.predictions);
+        setShowSuggestions(true);
+        setActiveField(field);
+      }
+    } catch (error) {
+      console.error('Error fetching address suggestions:', error);
+    }
+  };
+
+  const handleAddressSelect = async (placeId: string, field: string) => {
+    try {
+      const response = await fetch(`/api/places/details?place_id=${placeId}`);
+      const data = await response.json();
+      
+      if (data.result) {
+        const address = data.result.formatted_address;
+        const components = data.result.address_components;
+        
+        // Extract city, state, zip from address components
+        let city = '';
+        let state = '';
+        let zip = '';
+        
+        components.forEach((component: any) => {
+          if (component.types.includes('locality')) city = component.long_name;
+          if (component.types.includes('administrative_area_level_1')) state = component.short_name;
+          if (component.types.includes('postal_code')) zip = component.long_name;
+        });
+        
+        // Update the appropriate address field
+        if (field === 'currentAddress') {
+          setFormData(prev => ({
+            ...prev,
+            currentAddress: address,
+            currentCity: city,
+            currentState: state,
+            currentZip: zip,
+            currentCountry: 'US'
+          }));
+        } else if (field === 'fmpAddress') {
+          setFormData(prev => ({
+            ...prev,
+            fmpAddress: address,
+            fmpCity: city,
+            fmpState: state,
+            fmpZip: zip,
+            fmpCountry: 'US'
+          }));
+        }
+      }
+      
+      setShowSuggestions(false);
+      setAddressSuggestions([]);
+    } catch (error) {
+      console.error('Error fetching place details:', error);
     }
   };
 
@@ -369,10 +529,32 @@ const PatientRegistration = () => {
     reader.readAsDataURL(file);
   };
 
+  // Function to detect country from domain
+  const detectCountryFromDomain = () => {
+    if (typeof window === 'undefined') return 'CO'; // Default for SSR
+    
+    const hostname = window.location.hostname;
+    
+    // Production domain mapping
+    if (hostname === 'purple.orkachart.com') return 'CO';
+    if (hostname === 'holistic.orkachart.com') return 'DO';
+    
+    // Development URL parameter support
+    const urlParams = new URLSearchParams(window.location.search);
+    const countryParam = urlParams.get('country');
+    if (countryParam === 'CO' || countryParam === 'DO') {
+      return countryParam;
+    }
+    
+    // Default fallback for development
+    return 'CO';
+  };
+
+
   const fetchAllFacilities = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/facilities');
+      const response = await fetch(`/api/facilities?country=${detectedCountry}`);
       if (response.ok) {
         const data = await response.json();
         console.log('API Response:', data); // Debug log
@@ -419,7 +601,7 @@ const PatientRegistration = () => {
   const fetchInsurances = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/insurances?country=CO');
+      const response = await fetch(`/api/insurances?country=${detectedCountry}`);
       const data = await response.json();
       
       if (data.status === 'success' && data.data) {
@@ -552,15 +734,15 @@ const PatientRegistration = () => {
   const getCurrentStepFields = () => {
     switch (currentStep) {
       case 0: return ['selectedOffice', 'agreeToTerms'];
-      case 1: return ['idCardImage'];
-      case 2: return ['extractedFirstName', 'extractedLastName', 'extractedDOB', 'extractedSex'];
-      case 3: return ['email', 'cellPhone', 'phoneCountry', 'sex', 'ssn', 'dobMonth', 'dobDay', 'dobYear', 'dateOfBirth'];
-      case 4: return ['selfie'];
-      case 5: return ['email', 'cellPhone', 'currentAddress', 'currentCity', 'currentState', 'currentZip', 'currentCountry', 'fmpAddress', 'fmpCity', 'fmpState', 'fmpZip', 'fmpCountry', 'emergencyContactName', 'emergencyContactPhone'];
-      case 6: return ['weight', 'heightFeet', 'heightInches', 'painLevel'];
-      case 7: return ['selectedInsurance'];
-      case 8: return ['isVeteran'];
-      case 9: return ['hasDisabilityLetter'];
+      case 1: return formData.isVeteran === true ? ['isVeteran', 'branchOfService'] : ['isVeteran'];
+      case 2: return ['idCardImage'];
+      case 3: return ['extractedFirstName', 'extractedLastName', 'extractedDOB', 'extractedSex'];
+      case 4: return ['email', 'cellPhone', 'phoneCountry', 'sex', 'ssn', 'dobMonth', 'dobDay', 'dobYear', 'dateOfBirth'];
+      case 5: return ['selfie'];
+      case 6: return ['currentAddress', 'currentCity', 'currentState', 'currentZip', 'currentCountry', 'fmpAddress', 'fmpCity', 'fmpState', 'fmpZip', 'fmpCountry'];
+      case 7: return ['medications'];
+      case 8: return ['selectedInsurance'];
+      case 9: return ['hasDisabilityLetter', 'disabilityLetter'];
       case 10: return ['patientSignature', 'consentAccepted'];
       default: return [];
     }
@@ -575,8 +757,32 @@ const PatientRegistration = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate signature and consent before submission
+    if (!formData.patientSignature || formData.patientSignature.length === 0) {
+      setInvalidFields(prev => new Set([...prev, 'patientSignature']));
+      setShakingFields(prev => new Set([...prev, 'patientSignature']));
+      setTimeout(() => setShakingFields(prev => {
+        const newSet = new Set(prev);
+        newSet.delete('patientSignature');
+        return newSet;
+      }), 500);
+      return;
+    }
+    
+    if (!formData.consentAccepted) {
+      setInvalidFields(prev => new Set([...prev, 'consentAccepted']));
+      setShakingFields(prev => new Set([...prev, 'consentAccepted']));
+      setTimeout(() => setShakingFields(prev => {
+        const newSet = new Set(prev);
+        newSet.delete('consentAccepted');
+        return newSet;
+      }), 500);
+      return;
+    }
+    
     try {
-      // Submit to our server-side API
+      // Submit to our server-side API - COMMENTED OUT FOR NOW
+      /*
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
@@ -594,14 +800,135 @@ const PatientRegistration = () => {
         console.error('Registration failed:', result);
         alert('Registration failed. Please try again.');
       }
+      */
+      
+      // Temporary success message for testing
+      console.log('Form validation passed - API call commented out');
+      alert('Form validation passed! (API call is commented out)');
     } catch (error) {
       console.error('Error submitting form:', error);
       alert('Error submitting form. Please try again.');
     }
     
-    // Also output JSON for backend developer
-    console.log('Form data:', formData);
-    console.log('JSON for backend:', JSON.stringify(formData, null, 2));
+    // Create comprehensive JSON structure for backend
+    const comprehensiveFormData = {
+      // Registration Metadata
+      registration: {
+        timestamp: new Date().toISOString(),
+        step: currentStep,
+        completed: true
+      },
+      
+      // Office Selection
+      office: {
+        selectedOffice: formData.selectedOffice,
+        agreeToTerms: formData.agreeToTerms
+      },
+      
+      // Personal Information
+      personalInfo: {
+        firstName: formData.firstName || formData.extractedFirstName,
+        lastName: formData.lastName || formData.extractedLastName,
+        dateOfBirth: formData.dateOfBirth || formData.extractedDOB,
+        sex: formData.sex || formData.extractedSex,
+        dobComponents: {
+          month: formData.dobMonth,
+          day: formData.dobDay,
+          year: formData.dobYear
+        }
+      },
+      
+      // Address Information
+      addresses: {
+        current: {
+          address: formData.currentAddress,
+          city: formData.currentCity,
+          state: formData.currentState,
+          zip: formData.currentZip,
+          country: formData.currentCountry
+        },
+        fmp: {
+          address: formData.fmpAddress,
+          city: formData.fmpCity,
+          state: formData.fmpState,
+          zip: formData.fmpZip,
+          country: formData.fmpCountry
+        }
+      },
+      
+      // Identity Verification
+      identity: {
+        patientId: formData.patientId,
+        ssn: formData.ssn,
+        idCardUploaded: !!formData.idCardImage,
+        selfieUploaded: !!formData.selfie,
+        extractedData: {
+          firstName: formData.extractedFirstName,
+          lastName: formData.extractedLastName,
+          dateOfBirth: formData.extractedDOB,
+          sex: formData.extractedSex
+        }
+      },
+      
+      // Contact Information
+      contact: {
+        email: formData.email,
+        cellPhone: formData.cellPhone,
+        phoneCountry: formData.phoneCountry,
+        emergencyContact: {
+          name: formData.emergencyContactName,
+          phone: formData.emergencyContactPhone
+        }
+      },
+      
+      // Medical Information
+      medical: {
+        physical: {
+          weight: formData.weight,
+          height: {
+            feet: formData.heightFeet,
+            inches: formData.heightInches
+          },
+          painLevel: formData.painLevel
+        },
+        allergies: formData.allergies,
+        medications: formData.medications
+      },
+      
+      // Insurance Information
+      insurance: {
+        selectedInsurance: formData.selectedInsurance
+      },
+      
+      // Veteran Status
+      veteran: {
+        isVeteran: formData.isVeteran,
+        branchOfService: formData.branchOfService
+      },
+      
+      // Documentation
+      documentation: {
+        hasDisabilityLetter: formData.hasDisabilityLetter,
+        disabilityLetterUploaded: !!formData.disabilityLetter
+      },
+      
+      // Consent and Signature
+      consent: {
+        patientSignature: formData.patientSignature,
+        consentAccepted: formData.consentAccepted,
+        signatureTimestamp: formData.patientSignature ? new Date().toISOString() : null
+      },
+      
+      // File Attachments (Base64 encoded)
+      attachments: {
+        idCard: formData.idCardImage,
+        selfie: formData.selfie,
+        disabilityLetter: formData.disabilityLetter
+      }
+    };
+    
+    // Output clean submitted data
+    console.log('SUBMITTED DATA:', JSON.stringify(comprehensiveFormData, null, 2));
   };
 
   const renderStepContent = () => {
@@ -619,6 +946,30 @@ const PatientRegistration = () => {
             <div className="text-center mb-6">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Select Your Office</h4>
               <p className="text-gray-600 mb-6">Click on an office to select it</p>
+              
+              {/* Development Country Selector */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800 mb-2">Development Mode - Country Selector:</p>
+                  <div className="flex justify-center space-x-4">
+                    <button
+                      onClick={() => window.location.href = `${window.location.pathname}?country=CO`}
+                      className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                    >
+                      Colombia (CO)
+                    </button>
+                    <button
+                      onClick={() => window.location.href = `${window.location.pathname}?country=DO`}
+                      className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                    >
+                      Dominican Republic (DO)
+                    </button>
+                  </div>
+                  <p className="text-xs text-yellow-700 mt-2">
+                    Current: {detectedCountry}
+                  </p>
+                </div>
+              )}
             </div>
 
             {loading ? (
@@ -636,6 +987,8 @@ const PatientRegistration = () => {
                       className={`relative flex flex-col items-center p-4 sm:p-6 border-2 rounded-lg cursor-pointer transition-all duration-200 w-full sm:w-auto sm:min-w-[200px] max-w-[280px] ${
                         formData.selectedOffice === facilityId
                           ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                          : invalidFields.has('selectedOffice')
+                          ? 'border-red-500 bg-red-50 shake'
                           : 'border-gray-200 hover:border-emerald-300 hover:shadow-sm'
                       }`}
                     >
@@ -685,6 +1038,14 @@ const PatientRegistration = () => {
               </div>
             )}
 
+            {/* Office Selection Validation Error */}
+            {invalidFields.has('selectedOffice') && (
+              <div className="mt-4 flex items-center text-red-600">
+                <X className="w-4 h-4 mr-2" />
+                <span className="text-sm">Please select an office location</span>
+              </div>
+            )}
+
             {/* Terms and Conditions */}
             <div className="border-t pt-6">
               <label className="flex items-start space-x-3 cursor-pointer">
@@ -718,10 +1079,96 @@ const PatientRegistration = () => {
       case 1:
         return (
           <div className="space-y-6">
+            <div>
+              <div className="text-center mb-8">
+                <h2 className="text-xl font-black text-gray-900 mb-2 flex items-center justify-center">
+                  Are you a Veteran? *
+                  <AnimatedCheckmark fieldName="isVeteran" />
+                </h2>
+                <div className="w-24 h-1 bg-emerald-500 mx-auto rounded-full"></div>
+              </div>
+              <div className={`flex justify-center space-x-8 ${
+                invalidFields.has('isVeteran') ? 'shake' : ''
+              }`}>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="isVeteran"
+                    checked={formData.isVeteran === true}
+                    onChange={() => handleInputChange('isVeteran', true)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-gray-700 text-lg font-medium">Yes</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="isVeteran"
+                    checked={formData.isVeteran === false}
+                    onChange={() => handleInputChange('isVeteran', false)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-gray-700 text-lg font-medium">No</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Warning message for "No" selection */}
+
+            {/* Branch selection for "Yes" */}
+            {formData.isVeteran === true && (
+              <div>
+                <label className="block text-lg font-semibold text-gray-700 mb-6 text-center flex items-center justify-center">
+                  Select Your Branch of Service *
+                  <AnimatedCheckmark fieldName="branchOfService" />
+                </label>
+                <div className={`grid grid-cols-2 md:grid-cols-3 gap-4 ${
+                  invalidFields.has('branchOfService') ? 'shake' : ''
+                }`}>
+                  {branches.map((branch, index) => (
+                    <div
+                      key={branch}
+                      onClick={() => handleInputChange('branchOfService', branch)}
+                      className={`relative flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                        formData.branchOfService === branch
+                          ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                          : 'border-gray-200 hover:border-emerald-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="w-16 h-16 mb-3 flex items-center justify-center">
+                        <img 
+                          src={`/${index + 1}.jpg`}
+                          alt={`${branch} emblem`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <h4 className="font-semibold text-gray-900 text-center text-sm">{branch}</h4>
+                      {formData.branchOfService === branch && (
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">ID Card Upload</h3>
             
             {/* ID Card Upload Section */}
-            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <div className={`bg-gray-50 border-2 border-dashed rounded-lg p-8 text-center ${
+              invalidFields.has('idCardImage') 
+                ? 'border-red-500 bg-red-50 shake' 
+                : 'border-gray-300'
+            }`}>
               <div className="space-y-4">
                 <div className="flex justify-center">
                   <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
@@ -741,7 +1188,6 @@ const PatientRegistration = () => {
                     <input
                       type="file"
                       accept="image/*"
-                      capture="environment"
                       onChange={handleIDCardUpload}
                       className="hidden"
                       id="id-card-upload"
@@ -799,10 +1245,18 @@ const PatientRegistration = () => {
               </div>
             </div>
 
+            {/* ID Card Upload Validation Error */}
+            {invalidFields.has('idCardImage') && (
+              <div className="mt-4 flex items-center text-red-600">
+                <X className="w-4 h-4 mr-2" />
+                <span className="text-sm">Please upload your ID card</span>
+              </div>
+            )}
+
           </div>
         );
 
-      case 2:
+      case 3:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Review & Edit Extracted Data</h3>
@@ -821,6 +1275,7 @@ const PatientRegistration = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
                   <input
                     type="text"
+                    name="extractedFirstName"
                     value={formData.extractedFirstName}
                     onChange={(e) => handleInputChange('extractedFirstName', e.target.value)}
                     className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
@@ -833,6 +1288,7 @@ const PatientRegistration = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
                   <input
                     type="text"
+                    name="extractedLastName"
                     value={formData.extractedLastName}
                     onChange={(e) => handleInputChange('extractedLastName', e.target.value)}
                     className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
@@ -845,6 +1301,7 @@ const PatientRegistration = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
                   <input
                     type="date"
+                    name="extractedDOB"
                     value={formData.extractedDOB}
                     onChange={(e) => handleInputChange('extractedDOB', e.target.value)}
                     className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
@@ -856,6 +1313,7 @@ const PatientRegistration = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Sex *</label>
                   <select
+                    name="extractedSex"
                     value={formData.extractedSex}
                     onChange={(e) => handleInputChange('extractedSex', e.target.value)}
                     className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
@@ -873,44 +1331,11 @@ const PatientRegistration = () => {
           </div>
         );
 
-      case 3:
+      case 4:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Personal Information</h3>
             
-            {/* Extracted Data Display */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-              <h4 className="text-lg font-semibold text-emerald-900 mb-4 flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2" />
-                Information from ID Card
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900">
-                    {formData.extractedFirstName || 'Not provided'}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900">
-                    {formData.extractedLastName || 'Not provided'}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900">
-                    {formData.extractedDOB || 'Not provided'}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
-                  <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900">
-                    {formData.extractedSex || 'Not provided'}
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Personal Information Form */}
             <div className="space-y-6">
@@ -942,13 +1367,15 @@ const PatientRegistration = () => {
                   <div className="flex gap-2">
                     <div className="relative">
                       <div className="flex items-center px-3 py-3 border border-gray-300 rounded-lg bg-white cursor-pointer hover:border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 transition-colors">
+                        {formData.phoneCountry && (
                         <ReactCountryFlag 
                           countryCode={formData.phoneCountry} 
                           svg 
                           style={{ width: '1.2em', height: '1.2em', marginRight: '8px' }} 
                         />
+                        )}
                         <span className="flex-1 text-gray-900">
-                          {formData.phoneCountry === 'US' ? 'US' : 'CO'}
+                          {formData.phoneCountry === 'US' ? 'US' : formData.phoneCountry === 'CO' ? 'CO' : 'Select'}
                         </span>
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -960,6 +1387,7 @@ const PatientRegistration = () => {
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                           required
                         >
+                          <option value="">Select Country</option>
                           <option value="US">US</option>
                           <option value="CO">Colombia</option>
                         </select>
@@ -1119,71 +1547,7 @@ const PatientRegistration = () => {
           </div>
         );
 
-      case 2:
-        return (
-          <div className="space-y-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Identity Verification</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Patient ID *</label>
-              <input
-                type="text"
-                value={formData.patientId}
-                onChange={(e) => handleInputChange('patientId', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                placeholder="Extract Name, DOB, Sex"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Social Security Number *</label>
-              <input
-                type="password"
-                value={formData.ssn}
-                onChange={(e) => handleInputChange('ssn', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                placeholder="XXX-XX-XXXX"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Patient Selfie *</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-emerald-500 transition-colors">
-                <Camera className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
-                <p className="text-sm text-gray-500">PNG, JPG up to 10MB</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleInputChange('selfie', e.target.files?.[0])}
-                  className="hidden"
-                  id="selfie-upload"
-                />
-                <label htmlFor="selfie-upload" className="mt-4 inline-block bg-emerald-600 text-white px-6 py-2 rounded-lg cursor-pointer hover:bg-emerald-700 transition-colors">
-                  Choose File
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature *</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-emerald-500 transition-colors">
-                <FileSignature className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">Click to create your signature</p>
-                <button
-                  type="button"
-                  className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
-                >
-                  Create Signature
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
+      case 5:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Identity Verification</h3>
@@ -1199,7 +1563,11 @@ const PatientRegistration = () => {
                 </div>
               </div>
               
-              <div className="border-2 border-dashed border-emerald-300 rounded-lg p-8 text-center hover:border-emerald-400 transition-colors">
+              <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                invalidFields.has('selfie') 
+                  ? 'border-red-500 bg-red-50 shake' 
+                  : 'border-emerald-300 hover:border-emerald-400'
+              }`}>
                 {!formData.selfie ? (
                   <div className="space-y-4">
                     <div className="flex justify-center">
@@ -1235,19 +1603,21 @@ const PatientRegistration = () => {
                       className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium cursor-pointer transition-colors duration-200"
                     >
                       <Camera className="w-5 h-5" />
-                      <span>Take Selfie</span>
+                      <span>Take Photo or Upload</span>
                     </label>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="relative inline-block">
+                    <div className="relative">
                       <img
                         src={formData.selfie}
-                        alt="Selfie"
-                        className="w-48 h-48 object-cover rounded-lg shadow-md mx-auto"
+                        alt="Uploaded Selfie"
+                        className="mx-auto max-w-sm rounded-lg shadow-md"
                       />
                       <button
-                        onClick={() => handleInputChange('selfie', null)}
+                        onClick={() => {
+                          handleInputChange('selfie', null);
+                        }}
                         className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors duration-200"
                       >
                         <X className="w-4 h-4" />
@@ -1267,92 +1637,140 @@ const PatientRegistration = () => {
                   </div>
                 )}
               </div>
+
+              {/* Selfie Upload Validation Error */}
+              {invalidFields.has('selfie') && (
+                <div className="mt-4 flex items-center text-red-600">
+                  <X className="w-4 h-4 mr-2" />
+                  <span className="text-sm">Please take a selfie for identity verification</span>
+                </div>
+              )}
             </div>
           </div>
         );
 
-      case 5:
+      case 6:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Contact Information</h3>
             
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cell Phone *</label>
-                <input
-                  type="tel"
-                  value={formData.cellPhone}
-                  onChange={(e) => handleInputChange('cellPhone', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  required
-                />
-              </div>
-            </div>
 
             <div className="border-t pt-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Current Address</h4>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                Local Address in {detectedCountry === 'CO' ? 'Colombia' : detectedCountry === 'DO' ? 'Dominican Republic' : 'Your Country'}
+              </h4>
+              <p className="text-sm text-gray-600 mb-4">Please provide your current local address where you are currently residing.</p>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Street Address *</label>
-                  <input
-                    type="text"
-                    value={formData.currentAddress}
-                    onChange={(e) => handleInputChange('currentAddress', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                    placeholder="Enter your current address"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Street Address *
+                    <AnimatedCheckmark fieldName="currentAddress" />
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="currentAddress"
+                      value={formData.currentAddress}
+                      onChange={(e) => {
+                        handleInputChange('currentAddress', e.target.value);
+                        fetchAddressSuggestions(e.target.value, 'currentAddress');
+                      }}
+                      onFocus={() => {
+                        if (formData.currentAddress.length >= 3) {
+                          fetchAddressSuggestions(formData.currentAddress, 'currentAddress');
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setShowSuggestions(false), 200);
+                      }}
+                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                        shakingFields.has('currentAddress') ? 'shake border-red-500' : ''
+                      }`}
+                      placeholder="Start typing your address..."
+                      required
+                    />
+                    
+                    {/* Address suggestions dropdown */}
+                    {showSuggestions && activeField === 'currentAddress' && addressSuggestions.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {addressSuggestions.map((suggestion, index) => (
+                          <div
+                            key={index}
+                            onClick={() => handleAddressSelect(suggestion.place_id, 'currentAddress')}
+                            className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-gray-900">{suggestion.structured_formatting.main_text}</div>
+                            <div className="text-sm text-gray-600">{suggestion.structured_formatting.secondary_text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    City *
+                    <AnimatedCheckmark fieldName="currentCity" />
+                  </label>
                   <input
                     type="text"
+                    name="currentCity"
                     value={formData.currentCity}
                     onChange={(e) => handleInputChange('currentCity', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('currentCity') ? 'shake border-red-500' : ''
+                    }`}
                     placeholder="Enter city"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">State/Province *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    State/Province *
+                    <AnimatedCheckmark fieldName="currentState" />
+                  </label>
                   <input
                     type="text"
+                    name="currentState"
                     value={formData.currentState}
                     onChange={(e) => handleInputChange('currentState', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('currentState') ? 'shake border-red-500' : ''
+                    }`}
                     placeholder="Enter state/province"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ZIP/Postal Code *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ZIP/Postal Code *
+                    <AnimatedCheckmark fieldName="currentZip" />
+                  </label>
                   <input
                     type="text"
+                    name="currentZip"
                     value={formData.currentZip}
                     onChange={(e) => handleInputChange('currentZip', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('currentZip') ? 'shake border-red-500' : ''
+                    }`}
                     placeholder="Enter ZIP/postal code"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Country *
+                    <AnimatedCheckmark fieldName="currentCountry" />
+                  </label>
                   <input
                     type="text"
+                    name="currentCountry"
                     value={formData.currentCountry}
                     onChange={(e) => handleInputChange('currentCountry', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('currentCountry') ? 'shake border-red-500' : ''
+                    }`}
                     placeholder="Enter country"
                     required
                   />
@@ -1361,61 +1779,120 @@ const PatientRegistration = () => {
             </div>
 
             <div className="border-t pt-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Address Registered with FMP</h4>
-              <p className="text-sm text-gray-600 mb-4">Please provide the address you have registered with the Foreign Medical Program (FMP). This is usually a US address.</p>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Address Registered with FMP Program</h4>
+              <p className="text-sm text-gray-600 mb-4">Please provide the address you have registered with the FMP Program. This is usually a US address.</p>
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP Street Address *</label>
-                  <input
-                    type="text"
-                    value={formData.fmpAddress}
-                    onChange={(e) => handleInputChange('fmpAddress', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                    placeholder="Enter FMP registered address"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    FMP Street Address *
+                    <AnimatedCheckmark fieldName="fmpAddress" />
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="fmpAddress"
+                      value={formData.fmpAddress}
+                      onChange={(e) => {
+                        handleInputChange('fmpAddress', e.target.value);
+                        fetchAddressSuggestions(e.target.value, 'fmpAddress');
+                      }}
+                      onFocus={() => {
+                        if (formData.fmpAddress.length >= 3) {
+                          fetchAddressSuggestions(formData.fmpAddress, 'fmpAddress');
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setShowSuggestions(false), 200);
+                      }}
+                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                        shakingFields.has('fmpAddress') ? 'shake border-red-500' : ''
+                      }`}
+                      placeholder="Start typing your FMP address..."
+                      required
+                    />
+                    
+                    {/* Address suggestions dropdown */}
+                    {showSuggestions && activeField === 'fmpAddress' && addressSuggestions.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {addressSuggestions.map((suggestion, index) => (
+                          <div
+                            key={index}
+                            onClick={() => handleAddressSelect(suggestion.place_id, 'fmpAddress')}
+                            className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-gray-900">{suggestion.structured_formatting.main_text}</div>
+                            <div className="text-sm text-gray-600">{suggestion.structured_formatting.secondary_text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP City *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    FMP City *
+                    <AnimatedCheckmark fieldName="fmpCity" />
+                  </label>
                   <input
                     type="text"
+                    name="fmpCity"
                     value={formData.fmpCity}
                     onChange={(e) => handleInputChange('fmpCity', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('fmpCity') ? 'shake border-red-500' : ''
+                    }`}
                     placeholder="Enter city"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP State *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    FMP State *
+                    <AnimatedCheckmark fieldName="fmpState" />
+                  </label>
                   <input
                     type="text"
+                    name="fmpState"
                     value={formData.fmpState}
                     onChange={(e) => handleInputChange('fmpState', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('fmpState') ? 'shake border-red-500' : ''
+                    }`}
                     placeholder="Enter state"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP ZIP Code *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    FMP ZIP Code *
+                    <AnimatedCheckmark fieldName="fmpZip" />
+                  </label>
                   <input
                     type="text"
+                    name="fmpZip"
                     value={formData.fmpZip}
                     onChange={(e) => handleInputChange('fmpZip', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('fmpZip') ? 'shake border-red-500' : ''
+                    }`}
                     placeholder="Enter ZIP code"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">FMP Country *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    FMP Country *
+                    <AnimatedCheckmark fieldName="fmpCountry" />
+                  </label>
                   <input
                     type="text"
+                    name="fmpCountry"
                     value={formData.fmpCountry}
                     onChange={(e) => handleInputChange('fmpCountry', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('fmpCountry') ? 'shake border-red-500' : ''
+                    }`}
                     placeholder="Enter country (usually USA)"
                     required
                   />
@@ -1427,23 +1904,33 @@ const PatientRegistration = () => {
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Emergency Contact</h4>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Emergency Contact Name
+                    <AnimatedCheckmark fieldName="emergencyContactName" />
+                  </label>
                   <input
                     type="text"
+                    name="emergencyContactName"
                     value={formData.emergencyContactName}
                     onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                    required
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('emergencyContactName') ? 'shake border-red-500' : ''
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Phone *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Emergency Contact Phone
+                    <AnimatedCheckmark fieldName="emergencyContactPhone" />
+                  </label>
                   <input
                     type="tel"
+                    name="emergencyContactPhone"
                     value={formData.emergencyContactPhone}
                     onChange={(e) => handleInputChange('emergencyContactPhone', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                    required
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('emergencyContactPhone') ? 'shake border-red-500' : ''
+                    }`}
                   />
                 </div>
               </div>
@@ -1451,158 +1938,52 @@ const PatientRegistration = () => {
           </div>
         );
 
-      case 6:
+      case 7:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Medical Information</h3>
             
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Weight (lbs) *</label>
-                <input
-                  type="number"
-                  value={formData.weight}
-                  onChange={(e) => {
-                    // Only allow 3 digits, numbers only
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 3);
-                    handleInputChange('weight', value);
-                  }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  placeholder="Enter weight (3 digits max)"
-                  maxLength={3}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Height *</label>
-                <div className="flex space-x-2">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-500 mb-1">Feet</label>
-                    <input
-                      type="number"
-                      value={formData.heightFeet}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 1);
-                        handleInputChange('heightFeet', value);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                      placeholder="5"
-                      maxLength={1}
-                      min="1"
-                      max="8"
-                      required
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-500 mb-1">Inches</label>
-                    <input
-                      type="number"
-                      value={formData.heightInches}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 2);
-                        handleInputChange('heightInches', value);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                      placeholder="1"
-                      maxLength={2}
-                      min="0"
-                      max="11"
-                      required
-                    />
-                  </div>
-                </div>
-                {formData.heightFeet && formData.heightInches && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    {formData.heightFeet} feet {formData.heightInches} inches
-                  </p>
-                )}
-              </div>
-            </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Overall Pain Level (0-9) *</label>
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-500">0 (No Pain)</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="9"
-                  value={formData.painLevel || '0'}
-                  onChange={(e) => handleInputChange('painLevel', e.target.value)}
-                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                />
-                <span className="text-sm text-gray-500">9 (Severe Pain)</span>
-                <span className="text-lg font-semibold text-emerald-600 min-w-[2rem]">{formData.painLevel || '0'}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Food or Drug Allergies</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Current Medications *
+                <AnimatedCheckmark fieldName="medications" />
+              </label>
               <div className="space-y-3">
-                <input
-                  type="text"
-                  value={formData.allergyInput}
-                  onChange={(e) => handleInputChange('allergyInput', e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      if (formData.allergyInput.trim()) {
-                        const newAllergies = [...(formData.allergies || []), formData.allergyInput.trim()];
-                        handleInputChange('allergies', newAllergies);
-                        handleInputChange('allergyInput', '');
+                <div className={`flex gap-2 ${shakingFields.has('medications') ? 'shake' : ''}`}>
+                  <input
+                    type="text"
+                    value={formData.medicationInput}
+                    onChange={(e) => handleInputChange('medicationInput', e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (formData.medicationInput.trim()) {
+                          const newMedications = [...(formData.medications || []), formData.medicationInput.trim()];
+                          handleInputChange('medications', newMedications);
+                          handleInputChange('medicationInput', '');
+                        }
                       }
-                    }
-                  }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  placeholder="Type allergy and press Enter to add..."
-                />
-                
-                {/* Display allergies as tags */}
-                {formData.allergies && formData.allergies.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.allergies.map((allergy, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-emerald-100 text-emerald-800 border border-emerald-200"
-                      >
-                        {allergy}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newAllergies = formData.allergies.filter((_, i) => i !== index);
-                            handleInputChange('allergies', newAllergies);
-                          }}
-                          className="ml-2 text-emerald-600 hover:text-emerald-800"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Current Medications</label>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={formData.medicationInput}
-                  onChange={(e) => handleInputChange('medicationInput', e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
+                    }}
+                    className={`flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      shakingFields.has('medications') ? 'border-red-500' : ''
+                    }`}
+                    placeholder="Type medication name..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
                       if (formData.medicationInput.trim()) {
                         const newMedications = [...(formData.medications || []), formData.medicationInput.trim()];
                         handleInputChange('medications', newMedications);
                         handleInputChange('medicationInput', '');
                       }
-                    }
-                  }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  placeholder="Type medication and press Enter to add..."
-                />
+                    }}
+                    disabled={!formData.medicationInput.trim()}
+                    className="px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center min-w-[60px]"
+                  >
+                    <span className="text-xl font-bold">+</span>
+                  </button>
+                </div>
                 
                 {/* Display medications as tags */}
                 {formData.medications && formData.medications.length > 0 && (
@@ -1629,10 +2010,11 @@ const PatientRegistration = () => {
                 )}
               </div>
             </div>
+
           </div>
         );
 
-      case 7:
+      case 8:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Insurance Selection</h3>
@@ -1657,6 +2039,8 @@ const PatientRegistration = () => {
                     className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
                       formData.selectedInsurance === insurance.id
                         ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                        : invalidFields.has('selectedInsurance')
+                        ? 'border-red-500 bg-red-50 shake'
                         : 'border-gray-200 hover:border-emerald-300 hover:shadow-sm'
                     }`}
                   >
@@ -1688,101 +2072,14 @@ const PatientRegistration = () => {
                 )}
               </div>
             )}
-          </div>
-        );
 
-      case 8:
-        return (
-          <div className="space-y-6">
-            <div>
-              <div className="text-center mb-8">
-                <h2 className="text-xl font-black text-gray-900 mb-2">Are you a Veteran? *</h2>
-                <div className="w-24 h-1 bg-emerald-500 mx-auto rounded-full"></div>
-              </div>
-              <div className="flex justify-center space-x-8">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="isVeteran"
-                    checked={formData.isVeteran === true}
-                    onChange={() => handleInputChange('isVeteran', true)}
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
-                  />
-                  <span className="ml-2 text-gray-700 text-lg font-medium">Yes</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="isVeteran"
-                    checked={formData.isVeteran === false}
-                    onChange={() => handleInputChange('isVeteran', false)}
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
-                  />
-                  <span className="ml-2 text-gray-700 text-lg font-medium">No</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Warning message for "No" selection */}
-            {formData.isVeteran === false && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
-                <div className="text-amber-600 mb-2">
-                  <svg className="w-8 h-8 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-amber-800 mb-2">Service Limitation Notice</h3>
-                <p className="text-amber-700">
-                  Our services are only available for US veterans at this moment. We apologize for any inconvenience.
-                </p>
+            {/* Insurance Selection Validation Error */}
+            {invalidFields.has('selectedInsurance') && (
+              <div className="mt-4 flex items-center text-red-600">
+                <X className="w-4 h-4 mr-2" />
+                <span className="text-sm">Please select an insurance option</span>
               </div>
             )}
-
-            {/* Branch selection for "Yes" */}
-            {formData.isVeteran === true && (
-              <div>
-                <label className="block text-lg font-semibold text-gray-700 mb-6 text-center">Select Your Branch of Service *</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {branches.map((branch, index) => (
-                    <div
-                      key={branch}
-                      onClick={() => handleInputChange('branchOfService', branch)}
-                      className={`relative flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                        formData.branchOfService === branch
-                          ? 'border-emerald-500 bg-emerald-50 shadow-md'
-                          : 'border-gray-200 hover:border-emerald-300 hover:shadow-sm'
-                      }`}
-                    >
-                      <div className="w-16 h-16 mb-3 flex items-center justify-center">
-                        <img 
-                          src={`/${index + 1}.jpg`}
-                          alt={`${branch} emblem`}
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                      <h4 className="font-semibold text-gray-900 text-center text-sm">{branch}</h4>
-                      {formData.branchOfService === branch && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-              <div className="flex items-center space-x-3">
-                <Star className="h-6 w-6 text-emerald-600" />
-                <h4 className="text-lg font-semibold text-emerald-900">Thank You for Your Service</h4>
-              </div>
-              <p className="text-emerald-700 mt-2">
-                We honor and support all veterans. Your service is greatly appreciated, and we're committed to providing you with the highest quality healthcare services.
-              </p>
-            </div>
           </div>
         );
 
@@ -1791,9 +2088,14 @@ const PatientRegistration = () => {
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Disability Letter Upload</h3>
             
-            <div className="text-center mb-8">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Do you have your disability letter handy? *</h4>
-              <div className="flex justify-center space-x-8">
+              <div className="text-center mb-8">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-center">
+                Do you have your disability letter handy? *
+                <AnimatedCheckmark fieldName="hasDisabilityLetter" />
+              </h4>
+              <div className={`flex justify-center space-x-8 ${
+                invalidFields.has('hasDisabilityLetter') ? 'shake' : ''
+              }`}>
                 <label className="flex items-center">
                   <input
                     type="radio"
@@ -1817,44 +2119,73 @@ const PatientRegistration = () => {
               </div>
             </div>
 
-            {/* Upload section - only show if user has the letter */}
+            {/* Upload section for "Yes" */}
             {formData.hasDisabilityLetter === true && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Disability Letter from FMP *</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-emerald-500 transition-colors">
-                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">Upload your disability letter</p>
-                  <p className="text-sm text-gray-500">PDF format only</p>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => handleInputChange('disabilityLetter', e.target.files?.[0])}
-                    className="hidden"
-                    id="disability-upload"
-                  />
-                  <label htmlFor="disability-upload" className="mt-4 inline-block bg-emerald-600 text-white px-6 py-2 rounded-lg cursor-pointer hover:bg-emerald-700 transition-colors">
-                    Choose PDF File
-                  </label>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
+                <h4 className="text-lg font-semibold text-emerald-900 mb-4 flex items-center">
+                  <FileText className="w-5 h-5 mr-2" />
+                  Upload Disability Letter
+                </h4>
+                <p className="text-sm text-emerald-700 mb-4">
+                  Please upload a clear photo or scan of your disability letter.
+                </p>
+                <div className={`border-2 border-dashed rounded-lg p-6 text-center ${
+                  invalidFields.has('disabilityLetter') 
+                    ? 'border-red-500 bg-red-50 shake' 
+                    : 'border-emerald-300 bg-white'
+                }`}>
+                  {formData.disabilityLetter ? (
+                    <div className="space-y-4">
+                      <div className="w-24 h-24 mx-auto bg-emerald-100 rounded-lg flex items-center justify-center">
+                        <FileText className="w-12 h-12 text-emerald-600" />
+                      </div>
+                      <p className="text-sm text-emerald-700">Disability letter uploaded</p>
+                      <button
+                        type="button"
+                        onClick={() => handleInputChange('disabilityLetter', null)}
+                        className="text-sm text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="w-24 h-24 mx-auto bg-gray-100 rounded-lg flex items-center justify-center">
+                        <Upload className="w-12 h-12 text-gray-400" />
+                      </div>
+                      <div>
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                  handleInputChange('disabilityLetter', e.target?.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <span className="inline-flex items-center px-4 py-2 border border-emerald-300 rounded-md shadow-sm text-sm font-medium text-emerald-700 bg-white hover:bg-emerald-50">
+                            <Upload className="w-4 h-4 mr-2" />
+                            Choose File
+                          </span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Skip message - only show if user doesn't have the letter */}
-            {formData.hasDisabilityLetter === false && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                <div className="text-blue-600 mb-2">
-                  <svg className="w-8 h-8 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-blue-800 mb-2">No Problem!</h3>
-                <p className="text-blue-700">
-                  You can skip this step for now. You can provide your disability letter later when you have it available.
-                </p>
-              </div>
-            )}
           </div>
         );
+
 
       case 10:
         return (
@@ -1893,11 +2224,21 @@ const PatientRegistration = () => {
 
             {/* Signature Section */}
             <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-gray-900">Patient Signature</h4>
+              <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                Patient Signature
+                <AnimatedCheckmark fieldName="patientSignature" />
+              </h4>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">SIGNATURE *</label>
-                <div className="border-2 border-gray-300 rounded-lg bg-white">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  SIGNATURE *
+                  <AnimatedCheckmark fieldName="patientSignature" />
+                </label>
+                <div className={`border-2 rounded-lg bg-white ${
+                  invalidFields.has('patientSignature') 
+                    ? 'border-red-500 bg-red-50 shake' 
+                    : 'border-gray-300'
+                }`}>
                   <SignatureCanvas
                     ref={sigCanvas}
                     canvasProps={{
@@ -1927,24 +2268,39 @@ const PatientRegistration = () => {
               </div>
 
               <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => handleInputChange('consentAccepted', !formData.consentAccepted)}
-                  className="w-full bg-emerald-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
-                >
-                  {formData.consentAccepted ? 'Consent Accepted ✓' : 'Accept Consent'}
-                </button>
-                
-                {formData.consentAccepted && (
+                <div className="flex items-center justify-center">
                   <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                    type="button"
+                    onClick={() => handleInputChange('consentAccepted', !formData.consentAccepted)}
+                    className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center ${
+                      invalidFields.has('consentAccepted') ? 'shake' : ''
+                    } ${
+                      formData.consentAccepted 
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    }`}
                   >
-                    Submit Registration
+                    {formData.consentAccepted ? 'Consent Accepted ✓' : 'Accept Consent'}
+                    <AnimatedCheckmark fieldName="consentAccepted" />
                   </button>
-                )}
+                </div>
+                
               </div>
             </div>
+
+            {/* Signature and Consent Validation Errors */}
+            {invalidFields.has('patientSignature') && (
+              <div className="mt-4 flex items-center text-red-600">
+                <X className="w-4 h-4 mr-2" />
+                <span className="text-sm">Please provide your signature</span>
+              </div>
+            )}
+            {invalidFields.has('consentAccepted') && (
+              <div className="mt-4 flex items-center text-red-600">
+                <X className="w-4 h-4 mr-2" />
+                <span className="text-sm">Please accept the consent terms</span>
+              </div>
+            )}
           </div>
         );
 
@@ -2021,8 +2377,7 @@ const PatientRegistration = () => {
             {renderStepContent()}
             
             {/* Navigation Buttons */}
-            {currentStep !== 10 && (
-              <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
               <button
                 type="button"
                 onClick={prevStep}
@@ -2055,8 +2410,7 @@ const PatientRegistration = () => {
                   <CheckCircle className="h-5 w-5" />
                 </button>
               )}
-              </div>
-            )}
+            </div>
           </form>
         </div>
       </div>
